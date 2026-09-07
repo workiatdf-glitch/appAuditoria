@@ -9,7 +9,7 @@ services:
     name: app-auditoria
     runtime: node
     plan: free
-    buildCommand: cd frontend && npm install && npm run build && cd ../backend && npm install && npm run build
+    buildCommand: cd frontend && rm -f package-lock.json && npm install && npm run build && cd ../backend && rm -f package-lock.json && npm install && npm run build
     startCommand: cd backend && npx prisma db push --skip-generate && npm start
     envVars:
       - key: NODE_VERSION
