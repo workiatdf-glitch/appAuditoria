@@ -11,7 +11,7 @@ Sistema integral para la auditoría, control, trazabilidad y gestión de dispens
 - **Historial Clínico por Paciente:** Carga ágil de recetas, verificación de topes y dispensas previas con alertas automáticas.
 - **Módulo de Estadísticas y Analítica:** Gráficos de consumo por insumo, distribución por estado de autorización y visualización de pacientes con mayor consumo.
 - **Control de Acceso y Roles:** Autenticación JWT con roles diferenciados (Administrador y Usuario auditor).
-- **Respaldo y Compatibilidad:** Sincronización transparente con base de datos relacional PostgreSQL.
+- **Respaldo y Compatibilidad:** Base de datos PostgreSQL con auto-inicialización de pacientes históricos y consumos.
 
 ---
 
@@ -20,35 +20,30 @@ Sistema integral para la auditoría, control, trazabilidad y gestión de dispens
 - **Frontend:** React 18, TypeScript, Vite, Lucide Icons, Recharts, Date-fns, Axios.
 - **Backend:** Node.js, Express, TypeScript, Prisma ORM, JSON Web Tokens (JWT), Bcrypt, ExcelJS.
 - **Base de Datos:** PostgreSQL 15.
-- **Contenedores:** Docker & Docker Compose.
+- **Contenedores & Despliegue:** Docker, Docker Compose, Render Blueprint (`render.yaml`).
 
 ---
 
-## 📂 Estructura del Proyecto
+## ☁️ Despliegue en la Nube en 1 Solo Entorno (Opción A - Render 24/7)
 
-```plaintext
-control_diabetes_app/
-├── backend/                  # Servidor API REST & Lógica de Negocio
-│   ├── prisma/               # Esquema de Prisma y migraciones
-│   ├── index.ts              # Endpoints principales y autenticación
-│   ├── excelService.ts       # Sincronización y manejo de celdas
-│   └── Dockerfile
-├── frontend/                 # Interfaz de Usuario Web
-│   ├── src/
-│   │   ├── pages/            # Dashboard, DataGrid, Analytics, Perfil de Paciente
-│   │   ├── api.ts            # Cliente Axios con soporte VITE_API_URL
-│   │   └── App.tsx           # Enrutamiento SPA
-│   ├── vercel.json           # Reglas de enrutamiento para Vercel
-│   └── Dockerfile
-├── docker-compose.yml        # Orquestación de servicios en local
-└── README.md
-```
+Todo el sistema (Base de Datos + Servidor API + Web Frontend + Carga automática de los 800 pacientes y 4.998 recetas) está configurado con **Render Blueprint** para desplegarse automáticamente en una sola plataforma:
+
+### Pasos:
+1. Inicia sesión en **[dashboard.render.com](https://dashboard.render.com)** con tu cuenta de GitHub.
+2. En la esquina superior derecha, haz clic en el botón azul **New +** y selecciona **Blueprint**.
+3. Selecciona el repositorio **`workiatdf-glitch/appAuditoria`**.
+4. Render detectará automáticamente el archivo `render.yaml` y te mostrará los dos recursos que creará:
+   - `app-auditoria-db` (Base de datos PostgreSQL).
+   - `app-auditoria` (Servicio Web que compila frontend y backend).
+5. Haz clic en **Apply**.
+6. Render creará la base de datos, compilará la aplicación y en el primer arranque **cargará automáticamente los 800 pacientes y sus recetas históricas**.
+7. Al finalizar, Render te dará un enlace público único (ejemplo: `https://app-auditoria.onrender.com`) para acceder desde cualquier equipo.
 
 ---
 
 ## 💻 Ejecución Local con Docker
 
-Para levantar el entorno completo localmente:
+Si deseas seguir usándolo en tu máquina local:
 
 ```bash
 docker-compose up -d
@@ -57,36 +52,3 @@ docker-compose up -d
 - **Frontend:** [http://localhost:5173](http://localhost:5173)
 - **Backend API:** [http://localhost:3001/api](http://localhost:3001/api)
 - **PostgreSQL:** `localhost:5432`
-
----
-
-## 🌐 Guía de Despliegue en la Nube (24/7 sin depender de la notebook)
-
-### 1. Base de Datos en la Nube (Supabase o Neon)
-1. Crea un proyecto gratuito en [Supabase](https://supabase.com) o [Neon](https://neon.tech).
-2. Copia la cadena de conexión `DATABASE_URL` (ejemplo: `postgresql://postgres:[PASSWORD]@[HOST]:5432/postgres`).
-3. Restaura los datos del backup ejecutando:
-   ```bash
-   psql "TU_DATABASE_URL_DE_SUPABASE" < backup_diabetes.sql
-   ```
-
-### 2. Backend en la Nube (Render o Railway)
-1. En [Render](https://render.com), crea un nuevo **Web Service** conectado a este repositorio.
-2. Configura los parámetros:
-   - **Root Directory:** `backend`
-   - **Build Command:** `npm install && npm run build`
-   - **Start Command:** `npm start`
-3. Variables de Entorno en Render:
-   - `DATABASE_URL`: La URL copiada de Supabase/Neon.
-   - `JWT_SECRET`: Una clave segura para los tokens (ej. `supersecretkey_produccion`).
-   - `PORT`: `3001` (o el asignado automáticamente).
-4. Copia la URL pública generada (ejemplo: `https://app-auditoria-api.onrender.com`).
-
-### 3. Frontend en Vercel
-1. En [Vercel](https://vercel.com), importa el repositorio de GitHub.
-2. Configura:
-   - **Framework Preset:** Vite
-   - **Root Directory:** `frontend`
-3. Variable de Entorno en Vercel:
-   - `VITE_API_URL`: `https://app-auditoria-api.onrender.com/api` (la URL pública de tu backend con `/api`).
-4. Haz clic en **Deploy**.

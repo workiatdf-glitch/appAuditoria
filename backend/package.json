@@ -7,7 +7,9 @@
     "dev": "nodemon index.ts",
     "build": "prisma generate && tsc",
     "start": "node dist/index.js",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "db:push": "prisma db push --skip-generate",
+    "seed": "ts-node seed.ts"
   },
   "keywords": [],
   "author": "",

@@ -3,7 +3,10 @@ import cors from 'cors';
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
+import path from 'path';
+import fs from 'fs';
 import { addPrescriptionToExcel, addPatientToExcel } from './excelService';
+import { runAutoSeed } from './seed';
 
 const app = express();
 const prisma = new PrismaClient();
@@ -451,6 +454,24 @@ app.get('/api/analytics', authenticateToken, async (req: any, res: any) => {
   }
 });
 
-app.listen(PORT, () => {
+// --- Serve Frontend in Production ---
+const possibleFrontendPaths = [
+  path.resolve(__dirname, '../../frontend/dist'),
+  path.resolve(__dirname, '../frontend/dist'),
+  path.resolve(process.cwd(), 'frontend/dist'),
+  path.resolve(process.cwd(), '../frontend/dist')
+];
+const frontendDist = possibleFrontendPaths.find(p => fs.existsSync(p));
+if (frontendDist) {
+  console.log(`Serving frontend static build from ${frontendDist}`);
+  app.use(express.static(frontendDist));
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api')) return next();
+    res.sendFile(path.join(frontendDist, 'index.html'));
+  });
+}
+
+app.listen(PORT, async () => {
   console.log(`Backend running on port ${PORT}`);
+  await runAutoSeed();
 });

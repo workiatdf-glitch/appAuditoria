@@ -9,6 +9,6 @@
     "strict": false,
     "skipLibCheck": true
   },
-  "include": ["index.ts", "excelService.ts"],
+  "include": ["index.ts", "excelService.ts", "seed.ts"],
   "exclude": ["node_modules", "dist"]
 }
