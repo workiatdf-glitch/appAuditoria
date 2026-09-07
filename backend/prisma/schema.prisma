@@ -1,0 +1,72 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider      = "prisma-client-js"
+}
+
+model User {
+  id        String   @id @default(uuid())
+  username  String   @unique
+  password  String
+  role      String   @default("USER") // ADMIN or USER
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  prescriptions Prescription[]
+}
+
+model Patient {
+  id             String   @id @default(uuid())
+  dni            String   @unique
+  firstName      String
+  lastName       String
+  patientType    String   // e.g. "TIPO_1", "TIPO_2", "PEDIATRICO"
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  prescriptions  Prescription[]
+}
+
+model Item {
+  id              String   @id @default(uuid())
+  name            String   @unique
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  dispensingRules DispensingRule[]
+  prescriptions   Prescription[]
+}
+
+model DispensingRule {
+  id              String   @id @default(uuid())
+  itemId          String
+  patientType     String
+  maxQuantity     Int      // Maximum limit per month
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  item            Item     @relation(fields: [itemId], references: [id])
+
+  @@unique([itemId, patientType])
+}
+
+model Prescription {
+  id                 String   @id @default(uuid())
+  patientId          String
+  itemId             String
+  datePrescribed     DateTime
+  quantityPrescribed Int
+  quantityAuthorized Int
+  status             String   // "AUTHORIZED", "PARTIAL", "DENIED"
+  notes              String?
+  createdById        String
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  patient            Patient  @relation(fields: [patientId], references: [id])
+  item               Item     @relation(fields: [itemId], references: [id])
+  createdBy          User     @relation(fields: [createdById], references: [id])
+}
