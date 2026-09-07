@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "description": "Sistema de Auditoria y Control de Diabetes e Insumos",
   "scripts": {
-    "install:all": "npm install --prefix backend --include=dev && npm install --prefix frontend --include=dev",
-    "build": "npm run build --prefix frontend && npm run build --prefix backend",
-    "start": "npm start --prefix backend"
+    "install:all": "cd frontend && npm install && cd ../backend && npm install && cd ..",
+    "build": "cd frontend && npm run build && cd ../backend && npm run build && cd ..",
+    "start": "cd backend && npm start"
   }
 }
