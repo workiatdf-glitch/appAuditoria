@@ -13,7 +13,6 @@ frontend/.env
 # Build outputs
 dist/
 backend/dist/
-frontend/dist/
 build/
 
 # Database & local backups
