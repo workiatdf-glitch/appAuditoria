@@ -48,9 +48,17 @@ services:
     image: cloudflare/cloudflared:latest
     container_name: diabetes_tunnel
     restart: unless-stopped
-    command: tunnel --no-autoupdate run
+    command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN}
     environment:
       - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN}
+    depends_on:
+      - frontend
+
+  quick_tunnel:
+    image: cloudflare/cloudflared:latest
+    container_name: diabetes_quick_tunnel
+    restart: unless-stopped
+    command: tunnel --no-autoupdate --url http://frontend:5173
     depends_on:
       - frontend
 
