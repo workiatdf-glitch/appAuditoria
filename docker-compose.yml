@@ -44,6 +44,16 @@ services:
       - backend
     command: npm run dev -- --host 0.0.0.0
 
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    container_name: diabetes_tunnel
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN}
+    depends_on:
+      - frontend
+
   ngrok:
     image: ngrok/ngrok:latest
     container_name: diabetes_ngrok

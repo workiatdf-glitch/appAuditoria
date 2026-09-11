@@ -13,8 +13,14 @@ const prisma = new PrismaClient();
 const PORT = process.env.PORT || 3001;
 const JWT_SECRET = process.env.JWT_SECRET || 'supersecret123';
 
+app.set('trust proxy', 1);
 app.use(cors());
 app.use(express.json());
+
+// --- Health Check / Keep-Alive Endpoint ---
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', uptime: process.uptime(), timestamp: new Date().toISOString() });
+});
 
 // --- Authentication Middleware ---
 const authenticateToken = (req: any, res: any, next: any) => {
