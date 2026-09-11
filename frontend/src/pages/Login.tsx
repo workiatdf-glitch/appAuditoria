@@ -12,6 +12,11 @@ export default function Login({ onLogin }: LoginProps) {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // Silently pre-warm Render backend on page load in case of cold start
+  useState(() => {
+    api.get('/health').catch(() => {});
+  });
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -25,8 +30,12 @@ export default function Login({ onLogin }: LoginProps) {
       // Trigger global storage event so App.tsx re-renders
       window.dispatchEvent(new Event('storage'));
       onLogin();
-    } catch (err) {
-      setError('Credenciales inválidas o error de conexión');
+    } catch (err: any) {
+      if (err.response?.status === 401) {
+        setError('Usuario o contraseña incorrectos. Verifique sus datos.');
+      } else {
+        setError('Error al conectar con el servidor. Si el servidor estaba en reposo, aguarde unos segundos y vuelva a presionar Ingresar.');
+      }
     } finally {
       setLoading(false);
     }

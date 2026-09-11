@@ -6,12 +6,6 @@ const prisma = new PrismaClient();
 
 export async function runAutoSeed() {
   try {
-    const patientCount = await prisma.patient.count();
-    if (patientCount > 0) {
-      console.log(`Database already contains ${patientCount} patients. Skipping seed.`);
-      return;
-    }
-
     const candidatePaths = [
       path.resolve(__dirname, '../prisma/seed_data.json'),
       path.resolve(__dirname, './prisma/seed_data.json'),
@@ -26,7 +20,10 @@ export async function runAutoSeed() {
       return;
     }
 
-    console.log('Database is empty. Populating data from:', actualPath);
+    const currentPatientCount = await prisma.patient.count();
+    const currentPrescriptionCount = await prisma.prescription.count();
+    console.log(`Verifying database state. Current patients: ${currentPatientCount}, prescriptions: ${currentPrescriptionCount}`);
+
     const raw = fs.readFileSync(actualPath, 'utf-8');
     const { users, items, patients, prescriptions } = JSON.parse(raw);
 
@@ -34,7 +31,7 @@ export async function runAutoSeed() {
     if (users && users.length > 0) {
       for (const u of users) {
         await prisma.user.upsert({
-          where: { id: u.id },
+          where: { username: u.username },
           update: {},
           create: {
             id: u.id,
@@ -44,14 +41,14 @@ export async function runAutoSeed() {
           }
         });
       }
-      console.log(`Seeded ${users.length} users.`);
+      console.log(`Seeded/verified ${users.length} users.`);
     }
 
     // 2. Items
     if (items && items.length > 0) {
       for (const it of items) {
         await prisma.item.upsert({
-          where: { id: it.id },
+          where: { name: it.name },
           update: {},
           create: {
             id: it.id,
@@ -59,11 +56,12 @@ export async function runAutoSeed() {
           }
         });
       }
-      console.log(`Seeded ${items.length} items.`);
+      console.log(`Seeded/verified ${items.length} items.`);
     }
 
     // 3. Patients (in batches)
-    if (patients && patients.length > 0) {
+    if (patients && patients.length > currentPatientCount) {
+      console.log(`Syncing missing patients (${currentPatientCount} -> ${patients.length})...`);
       for (let i = 0; i < patients.length; i += 100) {
         const batch = patients.slice(i, i + 100).map((p: any) => ({
           id: p.id,
@@ -83,7 +81,8 @@ export async function runAutoSeed() {
     }
 
     // 4. Prescriptions (in batches)
-    if (prescriptions && prescriptions.length > 0) {
+    if (prescriptions && prescriptions.length > currentPrescriptionCount) {
+      console.log(`Syncing missing prescriptions (${currentPrescriptionCount} -> ${prescriptions.length})...`);
       for (let i = 0; i < prescriptions.length; i += 200) {
         const batch = prescriptions.slice(i, i + 200).map((pr: any) => ({
           id: pr.id,
@@ -103,7 +102,7 @@ export async function runAutoSeed() {
           skipDuplicates: true
         });
       }
-      console.log(`Seeded ${prescriptions.length} prescriptions.`);
+      console.log(`Seeded/verified ${prescriptions.length} prescriptions.`);
     }
 
     console.log('✅ Automatic database seeding completed successfully!');
