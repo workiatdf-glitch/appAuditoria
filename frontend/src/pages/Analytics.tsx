@@ -139,22 +139,22 @@ export default function Analytics() {
           </div>
         </div>
         
-        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
-          <div className="glass-panel" style={{ padding: '0.5rem 1rem', display: 'flex', gap: '1rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', width: '100%' }}>
+          <div className="glass-panel" style={{ padding: '0.75rem 1rem', display: 'flex', gap: '0.75rem', alignItems: 'flex-end', flexWrap: 'wrap', width: '100%' }}>
             
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', flex: '1 1 120px', minWidth: '110px' }}>
               <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '2px' }}>Desde:</span>
-              <input type="date" value={dateRange.start} onChange={e => setDateRange({...dateRange, start: e.target.value})} className="input-glass" style={{ padding: '0.25rem 0.5rem', background: 'rgba(0,0,0,0.2)' }} />
+              <input type="date" value={dateRange.start} onChange={e => setDateRange({...dateRange, start: e.target.value})} className="input-glass" style={{ padding: '0.4rem 0.5rem', background: 'rgba(0,0,0,0.2)', fontSize: '0.85rem' }} />
             </div>
             
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', flex: '1 1 120px', minWidth: '110px' }}>
               <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '2px' }}>Hasta:</span>
-              <input type="date" value={dateRange.end} onChange={e => setDateRange({...dateRange, end: e.target.value})} className="input-glass" style={{ padding: '0.25rem 0.5rem', background: 'rgba(0,0,0,0.2)' }} />
+              <input type="date" value={dateRange.end} onChange={e => setDateRange({...dateRange, end: e.target.value})} className="input-glass" style={{ padding: '0.4rem 0.5rem', background: 'rgba(0,0,0,0.2)', fontSize: '0.85rem' }} />
             </div>
             
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', flex: '1 1 120px', minWidth: '110px' }}>
               <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '2px' }}>Estado:</span>
-              <select value={selectedStatus} onChange={e => setSelectedStatus(e.target.value)} className="input-glass" style={{ padding: '0.25rem 0.5rem', background: 'rgba(0,0,0,0.2)', width: '120px' }}>
+              <select value={selectedStatus} onChange={e => setSelectedStatus(e.target.value)} className="input-glass" style={{ padding: '0.4rem 0.5rem', background: 'rgba(0,0,0,0.2)', fontSize: '0.85rem' }}>
                 <option value="">Todas</option>
                 <option value="AUTHORIZED">Autorizadas</option>
                 <option value="PARTIAL">Parcial (Tope)</option>
@@ -162,15 +162,15 @@ export default function Analytics() {
               </select>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', flex: '1 1 140px', minWidth: '120px' }}>
               <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '2px' }}>Insumo/Droga:</span>
-              <select value={selectedItem} onChange={e => setSelectedItem(e.target.value)} className="input-glass" style={{ padding: '0.25rem 0.5rem', background: 'rgba(0,0,0,0.2)', maxWidth: '150px' }}>
+              <select value={selectedItem} onChange={e => setSelectedItem(e.target.value)} className="input-glass" style={{ padding: '0.4rem 0.5rem', background: 'rgba(0,0,0,0.2)', fontSize: '0.85rem' }}>
                 <option value="">Todas</option>
                 {items.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
               </select>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', position: 'relative' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', position: 'relative', flex: '1 1 160px', minWidth: '140px' }}>
               <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '2px' }}>Paciente:</span>
               <div style={{ display: 'flex', gap: '0.5rem' }}>
                 <input 
@@ -182,7 +182,7 @@ export default function Analytics() {
                   }}
                   placeholder="Buscar paciente..."
                   className="input-glass" 
-                  style={{ padding: '0.25rem 0.5rem', background: 'rgba(0,0,0,0.2)', width: '200px', borderColor: selectedPatientId ? 'var(--primary)' : 'transparent' }} 
+                  style={{ padding: '0.4rem 0.5rem', background: 'rgba(0,0,0,0.2)', fontSize: '0.85rem', width: '100%', borderColor: selectedPatientId ? 'var(--primary)' : 'transparent' }} 
                 />
                 {selectedPatientId && (
                   <button onClick={() => { setSelectedPatientId(''); setPatientSearch(''); }} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 0 }}>
@@ -217,46 +217,46 @@ export default function Analytics() {
         </div>
       </header>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
-        <div className="glass-panel" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <div style={{ background: 'rgba(59, 130, 246, 0.2)', padding: '1rem', borderRadius: '50%' }}>
-            <Users size={24} color="#3b82f6" />
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '0.75rem', marginBottom: '1.5rem' }}>
+        <div className="glass-panel" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '1rem' }}>
+          <div style={{ background: 'rgba(59, 130, 246, 0.2)', padding: '0.75rem', borderRadius: '50%' }}>
+            <Users size={20} color="#3b82f6" />
           </div>
           <div>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Pacientes Filtrados</p>
-            <h2 style={{ fontSize: '1.75rem', fontWeight: 600 }}>{data?.totalPatients || 0}</h2>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>Pacientes Filtrados</p>
+            <h2 style={{ fontSize: '1.5rem', fontWeight: 600 }}>{data?.totalPatients || 0}</h2>
           </div>
         </div>
-        <div className="glass-panel" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <div style={{ background: 'rgba(16, 185, 129, 0.2)', padding: '1rem', borderRadius: '50%' }}>
-            <CheckCircle size={24} color="#10b981" />
+        <div className="glass-panel" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '1rem' }}>
+          <div style={{ background: 'rgba(16, 185, 129, 0.2)', padding: '0.75rem', borderRadius: '50%' }}>
+            <CheckCircle size={20} color="#10b981" />
           </div>
           <div>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Recetas Autorizadas</p>
-            <h2 style={{ fontSize: '1.75rem', fontWeight: 600 }}>{data?.statusCounts?.AUTHORIZED || 0}</h2>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>Recetas Autorizadas</p>
+            <h2 style={{ fontSize: '1.5rem', fontWeight: 600 }}>{data?.statusCounts?.AUTHORIZED || 0}</h2>
           </div>
         </div>
-        <div className="glass-panel" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <div style={{ background: 'rgba(245, 158, 11, 0.2)', padding: '1rem', borderRadius: '50%' }}>
-            <AlertTriangle size={24} color="#f59e0b" />
+        <div className="glass-panel" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '1rem' }}>
+          <div style={{ background: 'rgba(245, 158, 11, 0.2)', padding: '0.75rem', borderRadius: '50%' }}>
+            <AlertTriangle size={20} color="#f59e0b" />
           </div>
           <div>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Tope Mensual (Parcial)</p>
-            <h2 style={{ fontSize: '1.75rem', fontWeight: 600 }}>{data?.statusCounts?.PARTIAL || 0}</h2>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>Tope Mensual</p>
+            <h2 style={{ fontSize: '1.5rem', fontWeight: 600 }}>{data?.statusCounts?.PARTIAL || 0}</h2>
           </div>
         </div>
-        <div className="glass-panel" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <div style={{ background: 'rgba(244, 63, 94, 0.2)', padding: '1rem', borderRadius: '50%' }}>
-            <XCircle size={24} color="#f43f5e" />
+        <div className="glass-panel" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '1rem' }}>
+          <div style={{ background: 'rgba(244, 63, 94, 0.2)', padding: '0.75rem', borderRadius: '50%' }}>
+            <XCircle size={20} color="#f43f5e" />
           </div>
           <div>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Recetas Rechazadas</p>
-            <h2 style={{ fontSize: '1.75rem', fontWeight: 600 }}>{data?.statusCounts?.DENIED || 0}</h2>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>Recetas Rechazadas</p>
+            <h2 style={{ fontSize: '1.5rem', fontWeight: 600 }}>{data?.statusCounts?.DENIED || 0}</h2>
           </div>
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '2rem', marginBottom: '2rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 340px), 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
         <div className="glass-panel">
           <h3 style={{ marginBottom: '1.5rem', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <Activity size={18} color="var(--primary)" /> Mapa de Consumo por Insumo
@@ -310,10 +310,10 @@ export default function Analytics() {
         <div style={{ height: 400 }}>
           {data?.topPatients?.length > 0 ? (
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={data?.topPatients || []} layout="vertical" margin={{ top: 5, right: 30, left: 100, bottom: 5 }}>
+              <BarChart data={data?.topPatients || []} layout="vertical" margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" horizontal={true} vertical={false} />
                 <XAxis type="number" stroke="var(--text-muted)" />
-                <YAxis dataKey="name" type="category" stroke="var(--text-muted)" width={180} tick={{ fontSize: 12 }} />
+                <YAxis dataKey="name" type="category" stroke="var(--text-muted)" width={130} tick={{ fontSize: 11 }} />
                 <RechartsTooltip cursor={{ fill: 'rgba(255,255,255,0.02)' }} contentStyle={{ background: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff' }} />
                 <Bar dataKey="total" name="Cantidad" radius={[0, 4, 4, 0]}>
                   {(data?.topPatients || []).map((_entry: any, index: number) => (

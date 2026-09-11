@@ -144,24 +144,26 @@ export default function PatientProfile() {
 
       <div className="grid-2">
         <div>
-          <div className="glass-panel" style={{ marginBottom: '1.5rem', position: 'relative' }}>
+          <div className="glass-panel" style={{ marginBottom: '1.5rem' }}>
             {!isEditingType ? (
-              <>
-                <h2 style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>{patient.lastName} {patient.firstName}</h2>
-                <div style={{ color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  DNI: {patient.dni} | Tipo: <span style={{ fontWeight: 500, color: 'var(--primary)' }}>{patient.patientType.replace('_', ' ')}</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.75rem' }}>
+                <div style={{ flex: 1, minWidth: '180px' }}>
+                  <h2 style={{ fontSize: '1.5rem', marginBottom: '0.5rem', wordBreak: 'break-word' }}>{patient.lastName} {patient.firstName}</h2>
+                  <div style={{ color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    <span>DNI: {patient.dni}</span> | <span>Tipo: <span style={{ fontWeight: 500, color: 'var(--primary)' }}>{patient.patientType.replace('_', ' ')}</span></span>
+                  </div>
                 </div>
-                <div style={{ position: 'absolute', top: '1rem', right: '1rem', display: 'flex', gap: '0.5rem' }}>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
                    <button onClick={() => {
                      setEditType(patient.patientType);
                      setEditDni(patient.dni);
                      setEditFirstName(patient.firstName);
                      setEditLastName(patient.lastName);
                      setIsEditingType(true);
-                   }} className="btn-primary" style={{ padding: '4px 8px', fontSize: '0.8rem', background: 'var(--primary)' }}>Editar</button>
-                   <button onClick={handleDeletePatient} className="btn-primary" style={{ padding: '4px 8px', fontSize: '0.8rem', background: '#ef4444' }}>Eliminar</button>
+                   }} className="btn-primary" style={{ padding: '6px 12px', fontSize: '0.85rem', background: 'var(--primary)' }}>Editar</button>
+                   <button onClick={handleDeletePatient} className="btn-primary" style={{ padding: '6px 12px', fontSize: '0.85rem', background: '#ef4444' }}>Eliminar</button>
                 </div>
-              </>
+              </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                 <input className="input-glass" value={editLastName} onChange={e => setEditLastName(e.target.value)} placeholder="Apellido" />
@@ -260,34 +262,36 @@ export default function PatientProfile() {
             </div>
           ) : (
             <div className="glass-panel" style={{ padding: 0, overflow: 'hidden', maxHeight: '500px', display: 'flex', flexDirection: 'column' }}>
-              <div style={{ overflowY: 'auto', flex: 1 }}>
+              <div className="table-responsive" style={{ overflowY: 'auto', flex: 1 }}>
                 <table className="history-table" style={{ margin: 0, width: '100%' }}>
-                  <thead style={{ background: 'rgba(0,0,0,0.4)', position: 'sticky', top: 0, zIndex: 1, backdropFilter: 'blur(10px)' }}>
+                  <thead style={{ background: 'rgba(0,0,0,0.5)', position: 'sticky', top: 0, zIndex: 1, backdropFilter: 'blur(10px)' }}>
                     <tr>
-                      <th style={{ padding: '1rem' }}>Fecha</th>
-                      <th style={{ padding: '1rem' }}>Insumo</th>
-                      <th style={{ padding: '1rem' }}>Cant.</th>
-                      <th style={{ padding: '1rem' }}>Estado</th>
+                      <th>Fecha</th>
+                      <th>Insumo</th>
+                      <th>Cant.</th>
+                      <th>Estado</th>
                     </tr>
                   </thead>
                   <tbody>
                     {history.map(h => (
                       <tr key={h.id} className="history-row">
-                        <td style={{ padding: '1rem', borderTop: '1px solid var(--card-border)' }}>{format(new Date(h.datePrescribed), 'dd/MM/yyyy')}</td>
-                        <td style={{ padding: '1rem', borderTop: '1px solid var(--card-border)' }}>{h.item.name}</td>
-                        <td style={{ padding: '1rem', borderTop: '1px solid var(--card-border)' }}>{h.quantityAuthorized} / {h.quantityPrescribed}</td>
-                        <td style={{ padding: '1rem', borderTop: '1px solid var(--card-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <span className={`status-${h.status}`}>
-                            {h.status === 'AUTHORIZED' && 'Aprobado'}
-                            {h.status === 'PARTIAL' && 'Tope mensual'}
-                            {h.status === 'DENIED' && 'Rechazado'}
-                          </span>
-                          <button 
-                            onClick={() => handleDeletePrescription(h.id)}
-                            style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '0.8rem', textDecoration: 'underline' }}
-                          >
-                            Eliminar
-                          </button>
+                        <td style={{ borderTop: '1px solid var(--card-border)', whiteSpace: 'nowrap' }}>{format(new Date(h.datePrescribed), 'dd/MM/yyyy')}</td>
+                        <td style={{ borderTop: '1px solid var(--card-border)' }}>{h.item.name}</td>
+                        <td style={{ borderTop: '1px solid var(--card-border)', whiteSpace: 'nowrap' }}>{h.quantityAuthorized} / {h.quantityPrescribed}</td>
+                        <td style={{ borderTop: '1px solid var(--card-border)' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                            <span className={`status-${h.status}`}>
+                              {h.status === 'AUTHORIZED' && 'Aprobado'}
+                              {h.status === 'PARTIAL' && 'Tope'}
+                              {h.status === 'DENIED' && 'Rechazado'}
+                            </span>
+                            <button 
+                              onClick={() => handleDeletePrescription(h.id)}
+                              style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '0.8rem', textDecoration: 'underline' }}
+                            >
+                              Eliminar
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}

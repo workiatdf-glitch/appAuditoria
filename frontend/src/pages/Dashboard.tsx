@@ -67,12 +67,12 @@ export default function Dashboard() {
 
   return (
     <div className="container">
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3rem' }}>
+      <header className="app-header">
         <div>
           <h1 style={{ fontSize: '1.875rem', fontWeight: 600 }}>Pacientes</h1>
           <p style={{ color: 'var(--text-muted)' }}>Gestión de recetas e insumos</p>
         </div>
-        <div style={{ display: 'flex', gap: '1rem' }}>
+        <div className="header-actions">
           <button onClick={() => navigate('/datagrid')} className="btn-primary" style={{ background: 'var(--primary)' }}>
             Planilla Virtual
           </button>
@@ -90,27 +90,27 @@ export default function Dashboard() {
         </div>
       </header>
 
-      <div className="glass-panel" style={{ marginBottom: '2rem' }}>
-        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+      <div className="glass-panel" style={{ marginBottom: '1.5rem', padding: '1rem' }}>
+        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', width: '100%' }}>
           <div style={{ position: 'relative', flex: 1 }}>
-            <Search size={20} style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+            <Search size={20} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
             <input 
               type="text" 
               className="input-glass" 
               placeholder="Buscar por DNI o Nombre..." 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              style={{ paddingLeft: '48px' }}
+              style={{ paddingLeft: '44px' }}
             />
           </div>
-          <button className="btn-primary" disabled={loading} style={{ pointerEvents: 'none' }}>
-            Buscar
+          <button onClick={handleCreatePatient} className="btn-primary" title="Crear nuevo paciente">
+            <UserPlus size={18} /> <span style={{ display: 'inline' }}>Nuevo</span>
           </button>
         </div>
       </div>
 
       {displayedPatients.length === 0 && !loading && searchQuery && (
-        <div className="glass-panel flex-center" style={{ flexDirection: 'column', gap: '1rem', padding: '4rem 2rem' }}>
+        <div className="glass-panel flex-center" style={{ flexDirection: 'column', gap: '1rem', padding: '3rem 1.5rem', textAlign: 'center' }}>
           <p style={{ color: 'var(--text-muted)' }}>No se encontró ningún paciente que coincida con "{searchQuery}"</p>
           <button onClick={handleCreatePatient} className="btn-primary">
             <UserPlus size={18} /> Crear nuevo paciente
@@ -120,28 +120,28 @@ export default function Dashboard() {
 
       {displayedPatients.length > 0 && (
         <div className="glass-panel" style={{ padding: 0, overflow: 'hidden', maxHeight: '600px', display: 'flex', flexDirection: 'column' }}>
-          <div style={{ overflowY: 'auto', flex: 1 }}>
+          <div className="table-responsive" style={{ overflowY: 'auto', flex: 1 }}>
             <table className="history-table" style={{ margin: 0, borderSpacing: 0, width: '100%' }}>
-              <thead style={{ background: 'rgba(0,0,0,0.4)', position: 'sticky', top: 0, zIndex: 1, backdropFilter: 'blur(10px)' }}>
+              <thead style={{ background: 'rgba(0,0,0,0.5)', position: 'sticky', top: 0, zIndex: 1, backdropFilter: 'blur(10px)' }}>
                 <tr>
-                  <th style={{ padding: '1rem' }}>DNI</th>
-                  <th style={{ padding: '1rem' }}>Nombre Completo</th>
-                  <th style={{ padding: '1rem' }}>Tipo</th>
-                  <th style={{ textAlign: 'right', padding: '1rem' }}>Acción</th>
+                  <th>DNI</th>
+                  <th>Nombre Completo</th>
+                  <th>Tipo</th>
+                  <th style={{ textAlign: 'right' }}>Acción</th>
                 </tr>
               </thead>
               <tbody>
                 {displayedPatients.map(p => (
                   <tr key={p.id} className="history-row" style={{ cursor: 'pointer' }} onClick={() => navigate(`/patient/${p.id}`)}>
-                    <td style={{ borderRadius: 0, borderTop: '1px solid var(--card-border)', borderBottom: 'none', borderLeft: 'none', padding: '1rem' }}>{p.dni}</td>
-                    <td style={{ borderTop: '1px solid var(--card-border)', borderBottom: 'none', padding: '1rem' }}>{p.lastName} {p.firstName}</td>
-                    <td style={{ borderTop: '1px solid var(--card-border)', borderBottom: 'none', padding: '1rem' }}>
-                      <span style={{ padding: '4px 12px', background: 'rgba(59, 130, 246, 0.2)', color: '#93c5fd', borderRadius: '12px', fontSize: '0.8rem', fontWeight: 500 }}>
+                    <td style={{ borderRadius: 0, borderTop: '1px solid var(--card-border)', borderBottom: 'none', borderLeft: 'none', fontWeight: 500 }}>{p.dni}</td>
+                    <td style={{ borderTop: '1px solid var(--card-border)', borderBottom: 'none' }}>{p.lastName} {p.firstName}</td>
+                    <td style={{ borderTop: '1px solid var(--card-border)', borderBottom: 'none' }}>
+                      <span style={{ padding: '3px 8px', background: 'rgba(59, 130, 246, 0.2)', color: '#93c5fd', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 500, whiteSpace: 'nowrap' }}>
                         {p.patientType.replace('_', ' ')}
                       </span>
                     </td>
-                    <td style={{ textAlign: 'right', borderRadius: 0, borderTop: '1px solid var(--card-border)', borderBottom: 'none', borderRight: 'none', padding: '1rem' }}>
-                      <ChevronRight size={20} color="var(--text-muted)" />
+                    <td style={{ textAlign: 'right', borderRadius: 0, borderTop: '1px solid var(--card-border)', borderBottom: 'none', borderRight: 'none' }}>
+                      <ChevronRight size={18} color="var(--text-muted)" />
                     </td>
                   </tr>
                 ))}

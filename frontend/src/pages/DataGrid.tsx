@@ -98,55 +98,64 @@ export default function DataGrid() {
   };
 
   return (
-    <div className="container" style={{ maxWidth: '100%', padding: '2rem' }}>
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+    <div className="container" style={{ maxWidth: '100%' }}>
+      <header className="app-header">
         <div>
           <h1 style={{ fontSize: '1.875rem', fontWeight: 600 }}>Planilla Virtual</h1>
           <p style={{ color: 'var(--text-muted)' }}>Vista integral de base de datos estilo Excel</p>
         </div>
-        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-          <input 
-            type="date" 
-            value={startDate} 
-            onChange={e => setStartDate(e.target.value)}
-            className="input-glass"
-            style={{ width: '150px' }}
-            title="Fecha Inicio"
-          />
-          <input 
-            type="date" 
-            value={endDate} 
-            onChange={e => setEndDate(e.target.value)}
-            className="input-glass"
-            style={{ width: '150px' }}
-            title="Fecha Fin"
-          />
-          <button 
-            onClick={() => { setStartDate(''); setEndDate(''); }}
-            className="btn-primary"
-            style={{ background: 'var(--primary)' }}
-          >
-            Ver Todo
-          </button>
+        <div className="datagrid-header-controls" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          <div className="datagrid-date-row" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+            <input 
+              type="date" 
+              value={startDate} 
+              onChange={e => setStartDate(e.target.value)}
+              className="input-glass"
+              style={{ width: '140px', padding: '8px 10px', fontSize: '0.85rem' }}
+              title="Fecha Inicio"
+            />
+            <input 
+              type="date" 
+              value={endDate} 
+              onChange={e => setEndDate(e.target.value)}
+              className="input-glass"
+              style={{ width: '140px', padding: '8px 10px', fontSize: '0.85rem' }}
+              title="Fecha Fin"
+            />
+          </div>
+          <div className="datagrid-btn-row" style={{ display: 'flex', gap: '0.5rem' }}>
+            <button 
+              onClick={() => { setStartDate(''); setEndDate(''); }}
+              className="btn-primary"
+              style={{ background: 'var(--primary)', padding: '8px 12px', fontSize: '0.85rem' }}
+            >
+              Ver Todo
+            </button>
 
-          <button onClick={() => navigate('/dashboard')} className="btn-primary" style={{ background: 'transparent', border: '1px solid var(--card-border)' }}>
-            <ArrowLeft size={18} /> Volver
-          </button>
-          <button onClick={handleLogout} className="btn-primary" style={{ background: 'transparent', border: '1px solid var(--card-border)' }}>
-            <LogOut size={18} /> Salir
-          </button>
+            <button onClick={() => navigate('/dashboard')} className="btn-primary" style={{ background: 'transparent', border: '1px solid var(--card-border)', padding: '8px 12px', fontSize: '0.85rem' }}>
+              <ArrowLeft size={16} /> Volver
+            </button>
+            <button onClick={handleLogout} className="btn-primary" style={{ background: 'transparent', border: '1px solid var(--card-border)', padding: '8px 12px', fontSize: '0.85rem' }}>
+              <LogOut size={16} /> Salir
+            </button>
+          </div>
         </div>
       </header>
 
-      <div className="glass-panel" style={{ padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', height: 'calc(100vh - 160px)' }}>
-        <div style={{ overflow: 'auto', flex: 1 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+        <span>Total filas: {grid.length}</span>
+        <span>👉 Desliza para explorar insumos</span>
+      </div>
+
+      <div className="glass-panel" style={{ padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', height: 'calc(100dvh - 220px)' }}>
+        <div className="table-responsive" style={{ overflow: 'auto', flex: 1 }}>
           <table className="history-table" style={{ margin: 0, borderSpacing: 0, width: '100%' }}>
-            <thead style={{ background: 'rgba(0,0,0,0.4)', position: 'sticky', top: 0, zIndex: 10, backdropFilter: 'blur(10px)' }}>
+            <thead style={{ background: 'rgba(0,0,0,0.6)', position: 'sticky', top: 0, zIndex: 10, backdropFilter: 'blur(10px)' }}>
               <tr>
-                <th style={{ padding: '1rem', minWidth: '250px', position: 'sticky', left: 0, background: '#1a1a2e', zIndex: 20 }}>PACIENTE</th>
-                <th style={{ padding: '1rem', minWidth: '120px', position: 'sticky', left: '250px', background: '#1a1a2e', zIndex: 20 }}>DNI</th>
+                <th className="datagrid-col-patient" style={{ padding: '0.75rem', minWidth: '220px', position: 'sticky', left: 0, background: '#1a1a2e', zIndex: 20 }}>PACIENTE</th>
+                <th className="datagrid-col-dni" style={{ padding: '0.75rem', minWidth: '110px', position: 'sticky', left: '220px', background: '#1a1a2e', zIndex: 20 }}>DNI</th>
                 {items.map(item => (
-                  <th key={item.id} style={{ padding: '1rem', minWidth: '150px', textAlign: 'center' }}>
+                  <th key={item.id} style={{ padding: '0.75rem', minWidth: '140px', textAlign: 'center' }}>
                     {item.name}
                   </th>
                 ))}
@@ -156,12 +165,16 @@ export default function DataGrid() {
               {grid.map(row => (
                 <tr key={row.id} className="history-row">
                   <td 
-                    style={{ padding: '1rem', position: 'sticky', left: 0, background: '#131322', zIndex: 10, cursor: 'pointer', borderTop: '1px solid var(--card-border)' }}
+                    className="datagrid-col-patient"
+                    style={{ padding: '0.75rem', position: 'sticky', left: 0, background: '#131322', zIndex: 10, cursor: 'pointer', borderTop: '1px solid var(--card-border)' }}
                     onClick={() => navigate(`/patient/${row.id}`)}
                   >
-                    <span style={{ color: '#93c5fd' }}>{row.name}</span>
+                    <span style={{ color: '#93c5fd', fontWeight: 500 }}>{row.name}</span>
                   </td>
-                  <td style={{ padding: '1rem', position: 'sticky', left: '250px', background: '#131322', zIndex: 10, borderTop: '1px solid var(--card-border)' }}>
+                  <td 
+                    className="datagrid-col-dni"
+                    style={{ padding: '0.75rem', position: 'sticky', left: '220px', background: '#131322', zIndex: 10, borderTop: '1px solid var(--card-border)' }}
+                  >
                     {row.dni}
                   </td>
                   {items.map(item => (

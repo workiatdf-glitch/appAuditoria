@@ -42,7 +42,7 @@ export default function Login({ onLogin }: LoginProps) {
   };
 
   return (
-    <div className="flex-center" style={{ minHeight: '100vh', padding: '1rem' }}>
+    <div className="flex-center" style={{ minHeight: '100dvh', padding: '1rem' }}>
       <div className="glass-panel" style={{ width: '100%', maxWidth: '400px' }}>
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
           <Activity size={48} color="var(--primary)" style={{ marginBottom: '1rem' }} />
@@ -64,6 +64,8 @@ export default function Login({ onLogin }: LoginProps) {
               className="input-glass" 
               value={username}
               onChange={(e) => setUsername(e.target.value)}
+              autoCapitalize="none"
+              autoCorrect="off"
               required
             />
           </div>
@@ -74,10 +76,12 @@ export default function Login({ onLogin }: LoginProps) {
               className="input-glass" 
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              autoCapitalize="none"
+              autoCorrect="off"
               required
             />
           </div>
-          <button type="submit" className="btn-primary" disabled={loading} style={{ marginTop: '0.5rem' }}>
+          <button type="submit" className="btn-primary" disabled={loading} style={{ marginTop: '0.5rem', minHeight: '44px' }}>
             {loading ? 'Ingresando...' : 'Ingresar'}
           </button>
         </form>

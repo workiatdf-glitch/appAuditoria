@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import api from '../api';
-import { Users, Plus, Trash2, Key, X } from 'lucide-react';
+import { Users, Plus, Trash2, Key, X, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export default function AdminPanel() {
@@ -70,19 +70,25 @@ export default function AdminPanel() {
   };
 
   return (
-    <div style={{ padding: '2rem', maxWidth: '1200px', margin: '0 auto' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-        <h1 style={{ fontSize: '2rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <Users size={32} color="var(--primary)" />
-          Panel de Administración
-        </h1>
+    <div className="container">
+      <header className="app-header">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <button onClick={() => navigate('/dashboard')} className="btn-secondary" style={{ padding: '8px 12px' }}>
+            <ArrowLeft size={18} /> Volver
+          </button>
+          <h1 style={{ fontSize: '1.75rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <Users size={28} color="var(--primary)" />
+            Panel Admin
+          </h1>
+        </div>
         <button className="btn-primary" onClick={() => setShowModal(true)}>
-          <Plus size={20} /> Nuevo Usuario
+          <Plus size={18} /> Nuevo Usuario
         </button>
-      </div>
+      </header>
 
       <div className="glass-panel" style={{ padding: 0, overflow: 'hidden' }}>
-        <table className="history-table" style={{ margin: 0 }}>
+        <div className="table-responsive">
+          <table className="history-table" style={{ margin: 0, width: '100%' }}>
           <thead>
             <tr>
               <th>Usuario</th>
@@ -131,6 +137,7 @@ export default function AdminPanel() {
             ))}
           </tbody>
         </table>
+        </div>
       </div>
 
       {showModal && (
