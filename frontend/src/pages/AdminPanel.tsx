@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import api from '../api';
-import { Users, Plus, Trash2, Key, X, ArrowLeft } from 'lucide-react';
+import { Users, Plus, Trash2, Key, X, ArrowLeft, Download, FileSpreadsheet, Database } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export default function AdminPanel() {
@@ -8,6 +8,7 @@ export default function AdminPanel() {
   const [showModal, setShowModal] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState<any>(null);
+  const [downloading, setDownloading] = useState(false);
   
   // Form states
   const [username, setUsername] = useState('');
@@ -15,6 +16,32 @@ export default function AdminPanel() {
   const [role, setRole] = useState('USER');
   const [newPassword, setNewPassword] = useState('');
   const navigate = useNavigate();
+
+  const handleDownloadBackup = async (format?: string) => {
+    setDownloading(true);
+    try {
+      const url = format === 'excel' ? '/admin/backup?format=excel' : '/admin/backup';
+      const res = await api.get(url, { responseType: format === 'excel' ? 'blob' : 'json' });
+      
+      const blob = format === 'excel' 
+        ? new Blob([res.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+        : new Blob([JSON.stringify(res.data, null, 2)], { type: 'application/json' });
+      
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = downloadUrl;
+      const today = new Date().toISOString().split('T')[0];
+      a.download = format === 'excel' ? `backup_diabetes_${today}.xlsx` : `backup_diabetes_${today}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(downloadUrl);
+    } catch (err) {
+      alert('Error descargando copia de seguridad. Verifique conexión.');
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   useEffect(() => {
     fetchUsers();
@@ -85,6 +112,35 @@ export default function AdminPanel() {
           <Plus size={18} /> Nuevo Usuario
         </button>
       </header>
+
+      {/* Sección de Respaldo */}
+      <div className="glass-panel" style={{ marginBottom: '2rem', padding: '1.5rem' }}>
+        <h2 style={{ fontSize: '1.25rem', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <Database size={20} color="var(--primary)" />
+          Copias de Seguridad (Backup)
+        </h2>
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginBottom: '1rem' }}>
+          Descarga un respaldo completo y actualizado de todos los pacientes, recetas e insumos directamente a tu equipo.
+        </p>
+        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <button 
+            onClick={() => handleDownloadBackup('excel')} 
+            className="btn-primary" 
+            disabled={downloading}
+            style={{ background: '#10b981', padding: '10px 16px', fontSize: '0.9rem' }}
+          >
+            <FileSpreadsheet size={18} /> {downloading ? 'Generando...' : 'Descargar en Excel (.xlsx)'}
+          </button>
+          <button 
+            onClick={() => handleDownloadBackup()} 
+            className="btn-secondary" 
+            disabled={downloading}
+            style={{ padding: '10px 16px', fontSize: '0.9rem' }}
+          >
+            <Download size={18} /> {downloading ? 'Generando...' : 'Descargar Base Completa (.json)'}
+          </button>
+        </div>
+      </div>
 
       <div className="glass-panel" style={{ padding: 0, overflow: 'hidden' }}>
         <div className="table-responsive">

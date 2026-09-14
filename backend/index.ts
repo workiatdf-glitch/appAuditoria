@@ -5,6 +5,7 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import path from 'path';
 import fs from 'fs';
+import * as ExcelJS from 'exceljs';
 import { addPrescriptionToExcel, addPatientToExcel } from './excelService';
 import { runAutoSeed } from './seed';
 
@@ -74,6 +75,135 @@ app.post('/api/admin/sync-seed', authenticateToken, authorizeAdmin, async (req, 
     res.json({ success: true, patients, prescriptions, users });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+// --- Backup / Export Route ---
+app.get('/api/admin/backup', async (req: any, res: any) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+  const queryKey = req.query.key;
+  const headerKey = req.headers['x-backup-key'];
+  const validKey = process.env.BACKUP_KEY || process.env.JWT_SECRET || 'supersecretkey_diabetes';
+
+  let isAuthorized = false;
+  if ((queryKey && queryKey === validKey) || (headerKey && headerKey === validKey)) {
+    isAuthorized = true;
+  } else if (token) {
+    try {
+      const decoded: any = jwt.verify(token, JWT_SECRET);
+      if (decoded.role === 'ADMIN') isAuthorized = true;
+    } catch {}
+  }
+
+  if (!isAuthorized) {
+    return res.status(403).json({ error: 'Acceso denegado. Se requiere rol de administrador o clave de respaldo válida.' });
+  }
+
+  try {
+    const users = await prisma.user.findMany({ select: { id: true, username: true, role: true, createdAt: true } });
+    const items = await prisma.item.findMany({ orderBy: { name: 'asc' } });
+    const patients = await prisma.patient.findMany({ orderBy: { lastName: 'asc' } });
+    const prescriptions = await prisma.prescription.findMany({
+      orderBy: { datePrescribed: 'desc' },
+      include: {
+        item: { select: { name: true } },
+        createdBy: { select: { username: true } },
+        patient: { select: { dni: true, lastName: true, firstName: true } }
+      }
+    });
+
+    const format = req.query.format;
+    const timestamp = new Date().toISOString().split('T')[0];
+
+    if (format === 'excel') {
+      const workbook = new ExcelJS.Workbook();
+      
+      // Hoja 1: Pacientes
+      const sheetPatients = workbook.addWorksheet('Pacientes');
+      sheetPatients.columns = [
+        { header: 'ID', key: 'id', width: 36 },
+        { header: 'DNI', key: 'dni', width: 15 },
+        { header: 'Apellido', key: 'lastName', width: 20 },
+        { header: 'Nombre', key: 'firstName', width: 20 },
+        { header: 'Tipo Paciente', key: 'patientType', width: 18 },
+        { header: 'Fecha Alta', key: 'createdAt', width: 22 }
+      ];
+      patients.forEach(p => {
+        sheetPatients.addRow({
+          id: p.id,
+          dni: p.dni,
+          lastName: p.lastName,
+          firstName: p.firstName,
+          patientType: p.patientType,
+          createdAt: p.createdAt ? p.createdAt.toISOString() : ''
+        });
+      });
+
+      // Hoja 2: Recetas
+      const sheetRx = workbook.addWorksheet('Recetas');
+      sheetRx.columns = [
+        { header: 'ID', key: 'id', width: 36 },
+        { header: 'Fecha', key: 'date', width: 15 },
+        { header: 'DNI Paciente', key: 'dni', width: 15 },
+        { header: 'Paciente', key: 'patientName', width: 30 },
+        { header: 'Insumo / Droga', key: 'item', width: 25 },
+        { header: 'Cant. Indicada', key: 'qtyPrescribed', width: 15 },
+        { header: 'Cant. Autorizada', key: 'qtyAuthorized', width: 15 },
+        { header: 'Estado', key: 'status', width: 15 },
+        { header: 'Auditor', key: 'auditor', width: 18 }
+      ];
+      prescriptions.forEach(rx => {
+        sheetRx.addRow({
+          id: rx.id,
+          date: rx.datePrescribed ? rx.datePrescribed.toISOString().split('T')[0] : '',
+          dni: rx.patient?.dni,
+          patientName: `${rx.patient?.lastName || ''} ${rx.patient?.firstName || ''}`.trim(),
+          item: rx.item?.name,
+          qtyPrescribed: rx.quantityPrescribed,
+          qtyAuthorized: rx.quantityAuthorized,
+          status: rx.status,
+          auditor: rx.createdBy?.username
+        });
+      });
+
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', `attachment; filename="backup_diabetes_${timestamp}.xlsx"`);
+      await workbook.xlsx.write(res);
+      return res.end();
+    }
+
+    // Por defecto: Formato JSON estructurado
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Content-Disposition', `attachment; filename="backup_diabetes_${timestamp}.json"`);
+    res.json({
+      exportDate: new Date().toISOString(),
+      counts: {
+        patients: patients.length,
+        prescriptions: prescriptions.length,
+        items: items.length,
+        users: users.length
+      },
+      users,
+      items,
+      patients,
+      prescriptions: prescriptions.map(pr => ({
+        id: pr.id,
+        patientId: pr.patientId,
+        itemId: pr.itemId,
+        datePrescribed: pr.datePrescribed,
+        quantityPrescribed: pr.quantityPrescribed,
+        quantityAuthorized: pr.quantityAuthorized,
+        status: pr.status,
+        notes: pr.notes,
+        createdById: pr.createdById,
+        createdAt: pr.createdAt,
+        updatedAt: pr.updatedAt
+      }))
+    });
+  } catch (err: any) {
+    console.error('Error generando respaldo:', err);
+    res.status(500).json({ error: 'Error generando respaldo: ' + err.message });
   }
 });
 
