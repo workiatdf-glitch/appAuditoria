@@ -84,12 +84,12 @@ app.get('/api/admin/backup', async (req: any, res: any) => {
   const token = authHeader && authHeader.split(' ')[1];
   const queryKey = req.query.key;
   const headerKey = req.headers['x-backup-key'];
-  const validKey = process.env.BACKUP_KEY || process.env.JWT_SECRET || 'supersecretkey_diabetes';
+  const backupKey = process.env.BACKUP_KEY || 'supersecretkey_diabetes';
+  const isKeyValid = (queryKey && (queryKey === backupKey || queryKey === JWT_SECRET)) ||
+                     (headerKey && (headerKey === backupKey || headerKey === JWT_SECRET));
 
-  let isAuthorized = false;
-  if ((queryKey && queryKey === validKey) || (headerKey && headerKey === validKey)) {
-    isAuthorized = true;
-  } else if (token) {
+  let isAuthorized = Boolean(isKeyValid);
+  if (!isAuthorized && token) {
     try {
       const decoded: any = jwt.verify(token, JWT_SECRET);
       if (decoded.role === 'ADMIN') isAuthorized = true;
