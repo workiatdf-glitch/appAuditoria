@@ -17,21 +17,22 @@ export default function AdminPanel() {
   const [newPassword, setNewPassword] = useState('');
   const navigate = useNavigate();
 
-  const handleDownloadBackup = async (format?: string) => {
+  const handleDownloadBackup = async (format: 'excel' | 'sql') => {
     setDownloading(true);
     try {
-      const url = format === 'excel' ? '/admin/backup?format=excel' : '/admin/backup';
-      const res = await api.get(url, { responseType: format === 'excel' ? 'blob' : 'json' });
+      const url = format === 'excel' ? '/admin/backup?format=excel' : '/admin/backup?format=sql';
+      const res = await api.get(url, { responseType: 'blob' });
       
-      const blob = format === 'excel' 
-        ? new Blob([res.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
-        : new Blob([JSON.stringify(res.data, null, 2)], { type: 'application/json' });
+      const mimeType = format === 'excel'
+        ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        : 'application/sql';
+      const blob = new Blob([res.data], { type: mimeType });
       
       const downloadUrl = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = downloadUrl;
       const today = new Date().toISOString().split('T')[0];
-      a.download = format === 'excel' ? `backup_diabetes_${today}.xlsx` : `backup_diabetes_${today}.json`;
+      a.download = format === 'excel' ? `backup_diabetes_${today}.xlsx` : `backup_diabetes_${today}.sql`;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -132,12 +133,12 @@ export default function AdminPanel() {
             <FileSpreadsheet size={18} /> {downloading ? 'Generando...' : 'Descargar en Excel (.xlsx)'}
           </button>
           <button 
-            onClick={() => handleDownloadBackup()} 
+            onClick={() => handleDownloadBackup('sql')} 
             className="btn-secondary" 
             disabled={downloading}
             style={{ padding: '10px 16px', fontSize: '0.9rem' }}
           >
-            <Download size={18} /> {downloading ? 'Generando...' : 'Descargar Base Completa (.json)'}
+            <Database size={18} /> {downloading ? 'Generando...' : 'Descargar en PostgreSQL (.sql)'}
           </button>
         </div>
       </div>

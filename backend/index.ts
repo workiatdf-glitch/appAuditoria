@@ -101,11 +101,12 @@ app.get('/api/admin/backup', async (req: any, res: any) => {
   }
 
   try {
-    const users = await prisma.user.findMany({ select: { id: true, username: true, role: true, createdAt: true } });
+    const users = await prisma.user.findMany({ orderBy: { username: 'asc' } });
     const items = await prisma.item.findMany({ orderBy: { name: 'asc' } });
     const patients = await prisma.patient.findMany({ orderBy: { lastName: 'asc' } });
+    const dispensingRules = await prisma.dispensingRule.findMany();
     const prescriptions = await prisma.prescription.findMany({
-      orderBy: { datePrescribed: 'desc' },
+      orderBy: { datePrescribed: 'asc' },
       include: {
         item: { select: { name: true } },
         createdBy: { select: { username: true } },
@@ -116,6 +117,7 @@ app.get('/api/admin/backup', async (req: any, res: any) => {
     const format = req.query.format;
     const timestamp = new Date().toISOString().split('T')[0];
 
+    // 1. Formato Excel (.xlsx)
     if (format === 'excel') {
       const workbook = new ExcelJS.Workbook();
       
@@ -173,34 +175,162 @@ app.get('/api/admin/backup', async (req: any, res: any) => {
       return res.end();
     }
 
-    // Por defecto: Formato JSON estructurado
-    res.setHeader('Content-Type', 'application/json');
-    res.setHeader('Content-Disposition', `attachment; filename="backup_diabetes_${timestamp}.json"`);
-    res.json({
-      exportDate: new Date().toISOString(),
-      counts: {
-        patients: patients.length,
-        prescriptions: prescriptions.length,
-        items: items.length,
-        users: users.length
-      },
-      users,
-      items,
-      patients,
-      prescriptions: prescriptions.map(pr => ({
-        id: pr.id,
-        patientId: pr.patientId,
-        itemId: pr.itemId,
-        datePrescribed: pr.datePrescribed,
-        quantityPrescribed: pr.quantityPrescribed,
-        quantityAuthorized: pr.quantityAuthorized,
-        status: pr.status,
-        notes: pr.notes,
-        createdById: pr.createdById,
-        createdAt: pr.createdAt,
-        updatedAt: pr.updatedAt
-      }))
-    });
+    // 2. Formato JSON estructurado (opcional)
+    if (format === 'json') {
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Content-Disposition', `attachment; filename="backup_diabetes_${timestamp}.json"`);
+      return res.json({
+        exportDate: new Date().toISOString(),
+        counts: {
+          patients: patients.length,
+          prescriptions: prescriptions.length,
+          items: items.length,
+          users: users.length,
+          dispensingRules: dispensingRules.length
+        },
+        users: users.map(u => ({ id: u.id, username: u.username, role: u.role, createdAt: u.createdAt })),
+        items,
+        patients,
+        dispensingRules,
+        prescriptions: prescriptions.map(pr => ({
+          id: pr.id,
+          patientId: pr.patientId,
+          itemId: pr.itemId,
+          datePrescribed: pr.datePrescribed,
+          quantityPrescribed: pr.quantityPrescribed,
+          quantityAuthorized: pr.quantityAuthorized,
+          status: pr.status,
+          notes: pr.notes,
+          createdById: pr.createdById,
+          createdAt: pr.createdAt,
+          updatedAt: pr.updatedAt
+        }))
+      });
+    }
+
+    // 3. Formato PostgreSQL (.sql) Nativo y Completo (Por defecto o ?format=sql)
+    const sqlVal = (val: any): string => {
+      if (val === null || val === undefined) return 'NULL';
+      if (typeof val === 'number') return Number.isFinite(val) ? val.toString() : 'NULL';
+      if (typeof val === 'boolean') return val ? 'TRUE' : 'FALSE';
+      if (val instanceof Date) return `'${val.toISOString()}'`;
+      const str = String(val).replace(/'/g, "''");
+      return `'${str}'`;
+    };
+
+    res.setHeader('Content-Type', 'application/sql; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="backup_diabetes_${timestamp}.sql"`);
+
+    let headerSql = `-- ==========================================================\n` +
+      `-- RESPALDO POSTGRESQL - CONTROL AUDITORIA DIABETES PROMEFU\n` +
+      `-- Fecha de generación: ${new Date().toISOString()}\n` +
+      `-- Estadísticas: ${patients.length} pacientes, ${prescriptions.length} recetas, ${items.length} insumos, ${users.length} usuarios\n` +
+      `-- ==========================================================\n\n` +
+      `SET statement_timeout = 0;\n` +
+      `SET client_encoding = 'UTF8';\n` +
+      `SET standard_conforming_strings = on;\n\n` +
+      `BEGIN;\n\n` +
+      `-- Estructura de Tablas\n` +
+      `CREATE TABLE IF NOT EXISTS public."User" (\n` +
+      `    id text NOT NULL PRIMARY KEY,\n` +
+      `    username text NOT NULL UNIQUE,\n` +
+      `    password text NOT NULL,\n` +
+      `    role text DEFAULT 'USER' NOT NULL,\n` +
+      `    "createdAt" timestamp(3) without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,\n` +
+      `    "updatedAt" timestamp(3) without time zone NOT NULL\n` +
+      `);\n\n` +
+      `CREATE TABLE IF NOT EXISTS public."Item" (\n` +
+      `    id text NOT NULL PRIMARY KEY,\n` +
+      `    name text NOT NULL UNIQUE,\n` +
+      `    "createdAt" timestamp(3) without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,\n` +
+      `    "updatedAt" timestamp(3) without time zone NOT NULL\n` +
+      `);\n\n` +
+      `CREATE TABLE IF NOT EXISTS public."Patient" (\n` +
+      `    id text NOT NULL PRIMARY KEY,\n` +
+      `    dni text NOT NULL UNIQUE,\n` +
+      `    "firstName" text NOT NULL,\n` +
+      `    "lastName" text NOT NULL,\n` +
+      `    "patientType" text NOT NULL,\n` +
+      `    "createdAt" timestamp(3) without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,\n` +
+      `    "updatedAt" timestamp(3) without time zone NOT NULL\n` +
+      `);\n\n` +
+      `CREATE TABLE IF NOT EXISTS public."DispensingRule" (\n` +
+      `    id text NOT NULL PRIMARY KEY,\n` +
+      `    "itemId" text NOT NULL,\n` +
+      `    "patientType" text NOT NULL,\n` +
+      `    "maxQuantity" integer NOT NULL,\n` +
+      `    "createdAt" timestamp(3) without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,\n` +
+      `    "updatedAt" timestamp(3) without time zone NOT NULL\n` +
+      `);\n\n` +
+      `CREATE TABLE IF NOT EXISTS public."Prescription" (\n` +
+      `    id text NOT NULL PRIMARY KEY,\n` +
+      `    "patientId" text NOT NULL,\n` +
+      `    "itemId" text NOT NULL,\n` +
+      `    "datePrescribed" timestamp(3) without time zone NOT NULL,\n` +
+      `    "quantityPrescribed" integer NOT NULL,\n` +
+      `    "quantityAuthorized" integer NOT NULL,\n` +
+      `    status text NOT NULL,\n` +
+      `    notes text,\n` +
+      `    "createdById" text NOT NULL,\n` +
+      `    "createdAt" timestamp(3) without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,\n` +
+      `    "updatedAt" timestamp(3) without time zone NOT NULL\n` +
+      `);\n\n`;
+
+    res.write(headerSql);
+
+    // Datos: User
+    if (users.length > 0) {
+      res.write(`-- Datos: User (${users.length} registros)\n`);
+      const userRows = users.map(u =>
+        `(${sqlVal(u.id)}, ${sqlVal(u.username)}, ${sqlVal(u.password)}, ${sqlVal(u.role)}, ${sqlVal(u.createdAt)}, ${sqlVal(u.updatedAt)})`
+      ).join(',\n');
+      res.write(`INSERT INTO public."User" (id, username, password, role, "createdAt", "updatedAt")\nVALUES\n${userRows}\nON CONFLICT (id) DO UPDATE SET username = EXCLUDED.username, password = EXCLUDED.password, role = EXCLUDED.role, "updatedAt" = EXCLUDED."updatedAt";\n\n`);
+    }
+
+    // Datos: Item
+    if (items.length > 0) {
+      res.write(`-- Datos: Item (${items.length} registros)\n`);
+      const itemRows = items.map(it =>
+        `(${sqlVal(it.id)}, ${sqlVal(it.name)}, ${sqlVal(it.createdAt)}, ${sqlVal(it.updatedAt)})`
+      ).join(',\n');
+      res.write(`INSERT INTO public."Item" (id, name, "createdAt", "updatedAt")\nVALUES\n${itemRows}\nON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, "updatedAt" = EXCLUDED."updatedAt";\n\n`);
+    }
+
+    // Datos: Patient (en lotes de 200)
+    if (patients.length > 0) {
+      res.write(`-- Datos: Patient (${patients.length} registros)\n`);
+      for (let i = 0; i < patients.length; i += 200) {
+        const batch = patients.slice(i, i + 200);
+        const patRows = batch.map(p =>
+          `(${sqlVal(p.id)}, ${sqlVal(p.dni)}, ${sqlVal(p.firstName)}, ${sqlVal(p.lastName)}, ${sqlVal(p.patientType)}, ${sqlVal(p.createdAt)}, ${sqlVal(p.updatedAt)})`
+        ).join(',\n');
+        res.write(`INSERT INTO public."Patient" (id, dni, "firstName", "lastName", "patientType", "createdAt", "updatedAt")\nVALUES\n${patRows}\nON CONFLICT (id) DO UPDATE SET dni = EXCLUDED.dni, "firstName" = EXCLUDED."firstName", "lastName" = EXCLUDED."lastName", "patientType" = EXCLUDED."patientType", "updatedAt" = EXCLUDED."updatedAt";\n\n`);
+      }
+    }
+
+    // Datos: DispensingRule
+    if (dispensingRules.length > 0) {
+      res.write(`-- Datos: DispensingRule (${dispensingRules.length} registros)\n`);
+      const ruleRows = dispensingRules.map(r =>
+        `(${sqlVal(r.id)}, ${sqlVal(r.itemId)}, ${sqlVal(r.patientType)}, ${sqlVal(r.maxQuantity)}, ${sqlVal(r.createdAt)}, ${sqlVal(r.updatedAt)})`
+      ).join(',\n');
+      res.write(`INSERT INTO public."DispensingRule" (id, "itemId", "patientType", "maxQuantity", "createdAt", "updatedAt")\nVALUES\n${ruleRows}\nON CONFLICT (id) DO UPDATE SET "maxQuantity" = EXCLUDED."maxQuantity", "updatedAt" = EXCLUDED."updatedAt";\n\n`);
+    }
+
+    // Datos: Prescription (en lotes de 200)
+    if (prescriptions.length > 0) {
+      res.write(`-- Datos: Prescription (${prescriptions.length} registros)\n`);
+      for (let i = 0; i < prescriptions.length; i += 200) {
+        const batch = prescriptions.slice(i, i + 200);
+        const rxRows = batch.map(rx =>
+          `(${sqlVal(rx.id)}, ${sqlVal(rx.patientId)}, ${sqlVal(rx.itemId)}, ${sqlVal(rx.datePrescribed)}, ${sqlVal(rx.quantityPrescribed)}, ${sqlVal(rx.quantityAuthorized)}, ${sqlVal(rx.status)}, ${sqlVal(rx.notes)}, ${sqlVal(rx.createdById)}, ${sqlVal(rx.createdAt)}, ${sqlVal(rx.updatedAt)})`
+        ).join(',\n');
+        res.write(`INSERT INTO public."Prescription" (id, "patientId", "itemId", "datePrescribed", "quantityPrescribed", "quantityAuthorized", status, notes, "createdById", "createdAt", "updatedAt")\nVALUES\n${rxRows}\nON CONFLICT (id) DO UPDATE SET "quantityPrescribed" = EXCLUDED."quantityPrescribed", "quantityAuthorized" = EXCLUDED."quantityAuthorized", status = EXCLUDED.status, notes = EXCLUDED.notes, "updatedAt" = EXCLUDED."updatedAt";\n\n`);
+      }
+    }
+
+    res.write(`COMMIT;\n`);
+    return res.end();
   } catch (err: any) {
     console.error('Error generando respaldo:', err);
     res.status(500).json({ error: 'Error generando respaldo: ' + err.message });
