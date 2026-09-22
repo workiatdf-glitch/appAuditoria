@@ -66,7 +66,21 @@ export default function PatientProfile() {
           const diffTime = Math.abs(now.getTime() - lastDate.getTime());
           const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
           
-          if (diffDays < 20) {
+          const itemName = selectedItemObj?.name?.toUpperCase() || '';
+          const isGlucagon = itemName.includes('GLUCAGON');
+          const isGlucometro = itemName.includes('GLUCOMETRO');
+          const isLector = itemName.includes('LECTOR');
+
+          if (isGlucagon && diffDays < 365) {
+            setWarningMessage(`🚨 TOPE ANUAL ALCANZADO: El paciente ya recibió GLUCAGÓN el ${format(lastDate, 'dd/MM/yyyy')} (hace ${diffDays} días). Cupo máximo: 1 unidad por año.`);
+            setQuantityAuthorized(0);
+          } else if (isGlucometro && diffDays < 730) {
+            setWarningMessage(`🚨 TOPE BIANUAL ALCANZADO: El paciente ya recibió GLUCÓMETRO el ${format(lastDate, 'dd/MM/yyyy')} (hace ${diffDays} días). Cupo máximo: 1 unidad cada 2 años.`);
+            setQuantityAuthorized(0);
+          } else if (isLector && diffDays < 365) {
+            setWarningMessage(`🚨 TOPE ANUAL ALCANZADO: El paciente ya recibió LECTOR DE SENSORES el ${format(lastDate, 'dd/MM/yyyy')} (hace ${diffDays} días). Cupo máximo: 1 unidad por año.`);
+            setQuantityAuthorized(0);
+          } else if (!isGlucagon && !isGlucometro && !isLector && diffDays < 20) {
             setWarningMessage(`⚠️ Última dispensa hace ${diffDays} días (${format(lastDate, 'dd/MM/yyyy')}). Posible tope por mes.`);
           } else {
             setWarningMessage(null);
@@ -79,7 +93,7 @@ export default function PatientProfile() {
       }
     };
     checkLastPrescription();
-  }, [selectedItem, prescriptionDate, id]);
+  }, [selectedItem, prescriptionDate, id, selectedItemObj]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -235,6 +249,8 @@ export default function PatientProfile() {
                     setSelectedItem(e.target.value);
                     setPackageCount('');
                     setUnitsPerPackage('');
+                    setQuantity(1);
+                    setQuantityAuthorized(1);
                   }}
                   required
                 >
@@ -346,7 +362,16 @@ export default function PatientProfile() {
               </div>
               
               {warningMessage && (
-                <div style={{ backgroundColor: 'rgba(255, 165, 0, 0.2)', color: '#ffb74d', padding: '0.75rem', borderRadius: '8px', fontSize: '0.875rem', border: '1px solid rgba(255, 165, 0, 0.3)' }}>
+                <div style={{ 
+                  backgroundColor: warningMessage.includes('🚨') ? 'rgba(239, 68, 68, 0.2)' : 'rgba(255, 165, 0, 0.2)', 
+                  color: warningMessage.includes('🚨') ? '#fca5a5' : '#ffb74d', 
+                  padding: '0.85rem 1rem', 
+                  borderRadius: '8px', 
+                  fontSize: '0.875rem', 
+                  border: warningMessage.includes('🚨') ? '1px solid rgba(239, 68, 68, 0.4)' : '1px solid rgba(255, 165, 0, 0.3)',
+                  fontWeight: 500,
+                  lineHeight: '1.4'
+                }}>
                   {warningMessage}
                 </div>
               )}

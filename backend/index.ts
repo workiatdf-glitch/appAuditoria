@@ -480,9 +480,13 @@ app.get('/api/patients/:id/items/:itemId/last-prescription', authenticateToken, 
   const { id, itemId } = req.params;
   try {
     const lastPrescription = await prisma.prescription.findFirst({
-      where: { patientId: id, itemId: itemId },
+      where: { 
+        patientId: id, 
+        itemId: itemId,
+        status: { in: ['AUTHORIZED', 'PARTIAL'] }
+      },
       orderBy: { datePrescribed: 'desc' },
-      select: { datePrescribed: true }
+      select: { datePrescribed: true, quantityAuthorized: true, status: true }
     });
     res.json(lastPrescription || null);
   } catch (err) {
@@ -684,7 +688,7 @@ app.get('/api/analytics', authenticateToken, async (req: any, res: any) => {
     
     const itemMap: Record<string, { total: number, rawTotal: number, isPanales: boolean }> = {};
     const patientMap: Record<string, { name: string, total: number, panalesUnits: number, panalesCupos: number }> = {};
-    const timeMap: Record<string, number> = {};
+    const timeMap: Record<string, { total: number, diabetes: number, panales: number }> = {};
 
     prescriptions.forEach(p => {
       if (p.status === 'AUTHORIZED') authorizedCount++;
@@ -719,10 +723,18 @@ app.get('/api/analytics', authenticateToken, async (req: any, res: any) => {
           patientMap[patientName].panalesCupos += (quantityToSum / 120);
         }
 
-        // 3. Evolución Temporal
+        // 3. Evolución Temporal (desglosada en diabetes vs pañales)
         const d = new Date(p.datePrescribed);
         const monthStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-        timeMap[monthStr] = (timeMap[monthStr] || 0) + chartValue;
+        if (!timeMap[monthStr]) {
+          timeMap[monthStr] = { total: 0, diabetes: 0, panales: 0 };
+        }
+        if (isPanales) {
+          timeMap[monthStr].panales += chartValue;
+        } else {
+          timeMap[monthStr].diabetes += chartValue;
+        }
+        timeMap[monthStr].total += chartValue;
       }
     });
 
@@ -751,7 +763,9 @@ app.get('/api/analytics', authenticateToken, async (req: any, res: any) => {
     const timeEvolution = Object.keys(timeMap)
       .map(key => ({
         date: key,
-        total: unitMode === 'cupos' ? Number(timeMap[key].toFixed(1)) : Math.round(timeMap[key])
+        diabetes: Math.round(timeMap[key].diabetes),
+        panales: unitMode === 'cupos' ? Number(timeMap[key].panales.toFixed(1)) : Math.round(timeMap[key].panales),
+        total: unitMode === 'cupos' ? Number(timeMap[key].total.toFixed(1)) : Math.round(timeMap[key].total)
       }))
       .sort((a, b) => a.date.localeCompare(b.date));
 

@@ -4,7 +4,7 @@ import api from '../api';
 import { ArrowLeft, Activity, CheckCircle, XCircle, AlertTriangle, Users } from 'lucide-react';
 import { 
   BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, 
-  LineChart, Line, CartesianGrid, Cell, Treemap
+  LineChart, Line, CartesianGrid, Cell, Treemap, Legend
 } from 'recharts';
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6', '#f43f5e', '#84cc16'];
@@ -343,21 +343,60 @@ export default function Analytics() {
         </div>
 
         <div className="glass-panel">
-          <h3 style={{ marginBottom: '1.5rem', fontWeight: 500 }}>
-            Evolución Temporal de Insumos {unitMode === 'cupos' ? '(pañales en Cupos)' : '(en unidades)'}
+          <h3 style={{ marginBottom: '1rem', fontWeight: 500, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
+            <span>📈 Evolución Temporal Comparada</span>
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 400 }}>
+              {unitMode === 'cupos' ? 'Pañales ponderados en Cupos (1 Cupo = 120 un.)' : 'Unidades físicas brutas'}
+            </span>
           </h3>
           <div style={{ height: 350 }}>
             {data?.timeEvolution?.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={data?.timeEvolution || []} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                <LineChart data={data?.timeEvolution || []} margin={{ top: 10, right: 30, left: 10, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
                   <XAxis dataKey="date" stroke="var(--text-muted)" tickMargin={10} />
                   <YAxis stroke="var(--text-muted)" tickMargin={10} />
                   <RechartsTooltip 
                     contentStyle={{ background: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff' }} 
-                    formatter={(value: any) => [`${value} ${unitMode === 'cupos' ? 'cant. ponderada' : 'unidades'}`, 'Total']}
+                    formatter={(value: any, name: any) => {
+                      if (name.includes('Pañales')) {
+                        return [`${value} ${unitMode === 'cupos' ? 'Cupos' : 'unidades'}`, name];
+                      }
+                      if (name.includes('Diabetes')) {
+                        return [`${value} unidades/cajas`, name];
+                      }
+                      return [`${value} ${unitMode === 'cupos' ? 'ponderado' : 'unidades'}`, name];
+                    }}
                   />
-                  <Line type="monotone" name="Cantidad" dataKey="total" stroke="var(--primary)" strokeWidth={3} dot={{ r: 4, fill: 'var(--primary)' }} activeDot={{ r: 8 }} />
+                  <Legend wrapperStyle={{ paddingTop: '8px' }} />
+                  <Line 
+                    type="monotone" 
+                    name="Medicación Diabetes" 
+                    dataKey="diabetes" 
+                    stroke="#3b82f6" 
+                    strokeWidth={3} 
+                    dot={{ r: 4, fill: '#3b82f6' }} 
+                    activeDot={{ r: 7 }} 
+                  />
+                  <Line 
+                    type="monotone" 
+                    name={unitMode === 'cupos' ? 'Pañales (Cupos)' : 'Pañales (Unidades)'} 
+                    dataKey="panales" 
+                    stroke="#ec4899" 
+                    strokeWidth={3} 
+                    dot={{ r: 4, fill: '#ec4899' }} 
+                    activeDot={{ r: 7 }} 
+                  />
+                  <Line 
+                    type="monotone" 
+                    name="Total General" 
+                    dataKey="total" 
+                    stroke="#10b981" 
+                    strokeWidth={2} 
+                    strokeDasharray="4 4" 
+                    dot={{ r: 3, fill: '#10b981' }} 
+                    activeDot={{ r: 6 }} 
+                  />
                 </LineChart>
               </ResponsiveContainer>
             ) : (
