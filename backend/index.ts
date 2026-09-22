@@ -646,7 +646,7 @@ app.get('/api/datagrid', authenticateToken, async (req: any, res: any) => {
 // --- Analytics Route ---
 app.get('/api/analytics', authenticateToken, async (req: any, res: any) => {
   try {
-    const { startDate, endDate, itemId, patientId, status } = req.query;
+    const { startDate, endDate, itemId, patientId, status, unitMode = 'cupos' } = req.query;
     
     let whereClause: any = {};
     if (startDate || endDate) {
@@ -682,8 +682,8 @@ app.get('/api/analytics', authenticateToken, async (req: any, res: any) => {
     let deniedCount = 0;
     let partialCount = 0;
     
-    const itemMap: Record<string, number> = {};
-    const patientMap: Record<string, { name: string, total: number }> = {};
+    const itemMap: Record<string, { total: number, rawTotal: number, isPanales: boolean }> = {};
+    const patientMap: Record<string, { name: string, total: number, panalesUnits: number, panalesCupos: number }> = {};
     const timeMap: Record<string, number> = {};
 
     prescriptions.forEach(p => {
@@ -696,30 +696,63 @@ app.get('/api/analytics', authenticateToken, async (req: any, res: any) => {
 
       if (quantityToSum > 0) {
         const itemName = p.item.name;
-        itemMap[itemName] = (itemMap[itemName] || 0) + quantityToSum;
+        const isPanales = itemName.toUpperCase().includes('PAÑAL') || itemName.toUpperCase().includes('PANAL');
+        
+        // In Cupos mode, 120 diapers = 1 Cupo. For any other supply, 1 unit = 1 unit.
+        const chartValue = (isPanales && unitMode === 'cupos') ? (quantityToSum / 120) : quantityToSum;
 
+        // 1. Insumos
+        if (!itemMap[itemName]) {
+          itemMap[itemName] = { total: 0, rawTotal: 0, isPanales };
+        }
+        itemMap[itemName].rawTotal += quantityToSum;
+        itemMap[itemName].total += chartValue;
+
+        // 2. Pacientes
         const patientName = `${p.patient.lastName} ${p.patient.firstName}`.trim();
         if (!patientMap[patientName]) {
-          patientMap[patientName] = { name: patientName, total: 0 };
+          patientMap[patientName] = { name: patientName, total: 0, panalesUnits: 0, panalesCupos: 0 };
         }
-        patientMap[patientName].total += quantityToSum;
+        patientMap[patientName].total += chartValue;
+        if (isPanales) {
+          patientMap[patientName].panalesUnits += quantityToSum;
+          patientMap[patientName].panalesCupos += (quantityToSum / 120);
+        }
 
+        // 3. Evolución Temporal
         const d = new Date(p.datePrescribed);
         const monthStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-        timeMap[monthStr] = (timeMap[monthStr] || 0) + quantityToSum;
+        timeMap[monthStr] = (timeMap[monthStr] || 0) + chartValue;
       }
     });
 
     const itemConsumption = Object.keys(itemMap)
-      .map(key => ({ name: key, total: itemMap[key] }))
+      .map(key => {
+        const it = itemMap[key];
+        return {
+          name: key,
+          total: (it.isPanales && unitMode === 'cupos') ? Number(it.total.toFixed(1)) : Math.round(it.total),
+          rawTotal: it.rawTotal,
+          unit: (it.isPanales && unitMode === 'cupos') ? 'Cupos' : 'Unidades'
+        };
+      })
       .sort((a, b) => b.total - a.total);
 
     const topPatients = Object.values(patientMap)
+      .map(p => ({
+        name: p.name,
+        total: unitMode === 'cupos' ? Number(p.total.toFixed(1)) : Math.round(p.total),
+        panalesUnits: p.panalesUnits,
+        panalesCupos: Number(p.panalesCupos.toFixed(1))
+      }))
       .sort((a, b) => b.total - a.total)
       .slice(0, 10);
 
     const timeEvolution = Object.keys(timeMap)
-      .map(key => ({ date: key, total: timeMap[key] }))
+      .map(key => ({
+        date: key,
+        total: unitMode === 'cupos' ? Number(timeMap[key].toFixed(1)) : Math.round(timeMap[key])
+      }))
       .sort((a, b) => a.date.localeCompare(b.date));
 
     res.json({
@@ -731,7 +764,8 @@ app.get('/api/analytics', authenticateToken, async (req: any, res: any) => {
       },
       itemConsumption,
       topPatients,
-      timeEvolution
+      timeEvolution,
+      unitMode
     });
   } catch (err) {
     res.status(500).json({ error: 'Error fetching analytics' });

@@ -49,6 +49,8 @@ export default function Analytics() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   
+  const [unitMode, setUnitMode] = useState<'cupos' | 'unidades'>('cupos');
+  
   // Filter States
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
   const [items, setItems] = useState<any[]>([]);
@@ -103,6 +105,7 @@ export default function Analytics() {
       if (selectedItem) params.append('itemId', selectedItem);
       if (selectedStatus) params.append('status', selectedStatus);
       if (selectedPatientId) params.append('patientId', selectedPatientId);
+      params.append('unitMode', unitMode);
       
       const res = await api.get(`/analytics?${params.toString()}`);
       setData(res.data);
@@ -115,7 +118,7 @@ export default function Analytics() {
 
   useEffect(() => {
     fetchAnalytics();
-  }, [dateRange, selectedItem, selectedStatus, selectedPatientId]);
+  }, [dateRange, selectedItem, selectedStatus, selectedPatientId, unitMode]);
 
   if (loading && !data) {
     return <div className="flex-center" style={{ height: '100vh' }}><div style={{ color: 'var(--text-muted)' }}>Cargando Estadísticas...</div></div>;
@@ -123,7 +126,9 @@ export default function Analytics() {
 
   const treeMapData = data?.itemConsumption?.map((item: any) => ({
     name: item.name,
-    size: item.total
+    size: item.total,
+    rawTotal: item.rawTotal,
+    unit: item.unit
   })) || [];
 
   return (
@@ -137,6 +142,52 @@ export default function Analytics() {
             <h1 style={{ fontSize: '1.875rem', fontWeight: 600 }}>Dashboard Estadístico</h1>
             <p style={{ color: 'var(--text-muted)' }}>Análisis de consumos y prescripciones</p>
           </div>
+        </div>
+
+        {/* Interruptor de Vista: Cupos vs Unidades Físicas */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'rgba(0,0,0,0.3)', padding: '4px', borderRadius: '10px', border: '1px solid var(--card-border)' }}>
+          <button
+            type="button"
+            onClick={() => setUnitMode('cupos')}
+            style={{
+              padding: '6px 12px',
+              fontSize: '0.85rem',
+              fontWeight: 500,
+              borderRadius: '7px',
+              border: 'none',
+              cursor: 'pointer',
+              background: unitMode === 'cupos' ? 'var(--primary)' : 'transparent',
+              color: unitMode === 'cupos' ? '#fff' : 'var(--text-muted)',
+              transition: 'all 0.2s ease',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
+            title="Pañales contabilizados como Cupos (1 Cupo = 120 unidades)"
+          >
+            📊 Vista Equilibrada (Cupos)
+          </button>
+          <button
+            type="button"
+            onClick={() => setUnitMode('unidades')}
+            style={{
+              padding: '6px 12px',
+              fontSize: '0.85rem',
+              fontWeight: 500,
+              borderRadius: '7px',
+              border: 'none',
+              cursor: 'pointer',
+              background: unitMode === 'unidades' ? 'var(--primary)' : 'transparent',
+              color: unitMode === 'unidades' ? '#fff' : 'var(--text-muted)',
+              transition: 'all 0.2s ease',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
+            title="Unidades físicas brutas sin ponderar"
+          >
+            📦 Vista Unidades Físicas
+          </button>
         </div>
         
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', width: '100%' }}>
@@ -275,7 +326,13 @@ export default function Analytics() {
                   <RechartsTooltip 
                     contentStyle={{ background: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff' }} 
                     itemStyle={{ color: '#fff' }}
-                    formatter={(value: any, _name: any, props: any) => [value, props.payload.name]}
+                    formatter={(value: any, _name: any, props: any) => {
+                      const isPanales = props?.payload?.name?.toUpperCase().includes('PAÑAL') || props?.payload?.name?.toUpperCase().includes('PANAL');
+                      if (isPanales && unitMode === 'cupos') {
+                        return [`${value} Cupos (${props?.payload?.rawTotal || Math.round(value * 120)} unidades)`, props?.payload?.name];
+                      }
+                      return [`${value} unidades`, props?.payload?.name];
+                    }}
                   />
                 </Treemap>
               </ResponsiveContainer>
@@ -286,7 +343,9 @@ export default function Analytics() {
         </div>
 
         <div className="glass-panel">
-          <h3 style={{ marginBottom: '1.5rem', fontWeight: 500 }}>Evolución Temporal de Insumos</h3>
+          <h3 style={{ marginBottom: '1.5rem', fontWeight: 500 }}>
+            Evolución Temporal de Insumos {unitMode === 'cupos' ? '(pañales en Cupos)' : '(en unidades)'}
+          </h3>
           <div style={{ height: 350 }}>
             {data?.timeEvolution?.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
@@ -294,7 +353,10 @@ export default function Analytics() {
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
                   <XAxis dataKey="date" stroke="var(--text-muted)" tickMargin={10} />
                   <YAxis stroke="var(--text-muted)" tickMargin={10} />
-                  <RechartsTooltip contentStyle={{ background: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff' }} />
+                  <RechartsTooltip 
+                    contentStyle={{ background: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff' }} 
+                    formatter={(value: any) => [`${value} ${unitMode === 'cupos' ? 'cant. ponderada' : 'unidades'}`, 'Total']}
+                  />
                   <Line type="monotone" name="Cantidad" dataKey="total" stroke="var(--primary)" strokeWidth={3} dot={{ r: 4, fill: 'var(--primary)' }} activeDot={{ r: 8 }} />
                 </LineChart>
               </ResponsiveContainer>
@@ -306,7 +368,9 @@ export default function Analytics() {
       </div>
 
       <div className="glass-panel">
-        <h3 style={{ marginBottom: '1.5rem', fontWeight: 500 }}>Top 10 Pacientes con Mayor Consumo (Cantidades)</h3>
+        <h3 style={{ marginBottom: '1.5rem', fontWeight: 500 }}>
+          Top 10 Pacientes con Mayor Consumo ({unitMode === 'cupos' ? 'Ponderado en Cupos' : 'Unidades Físicas'})
+        </h3>
         <div style={{ height: 400 }}>
           {data?.topPatients?.length > 0 ? (
             <ResponsiveContainer width="100%" height="100%">
@@ -314,7 +378,17 @@ export default function Analytics() {
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" horizontal={true} vertical={false} />
                 <XAxis type="number" stroke="var(--text-muted)" />
                 <YAxis dataKey="name" type="category" stroke="var(--text-muted)" width={130} tick={{ fontSize: 11 }} />
-                <RechartsTooltip cursor={{ fill: 'rgba(255,255,255,0.02)' }} contentStyle={{ background: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff' }} />
+                <RechartsTooltip 
+                  cursor={{ fill: 'rgba(255,255,255,0.02)' }} 
+                  contentStyle={{ background: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff' }} 
+                  formatter={(value: any, _name: any, props: any) => {
+                    const p = props?.payload;
+                    if (unitMode === 'cupos' && p?.panalesUnits > 0) {
+                      return [`${value} (incluye ${p.panalesCupos} Cupos / ${p.panalesUnits} pañales)`, 'Consumo'];
+                    }
+                    return [`${value} ${unitMode === 'cupos' ? 'cant. ponderada' : 'unidades'}`, 'Consumo'];
+                  }}
+                />
                 <Bar dataKey="total" name="Cantidad" radius={[0, 4, 4, 0]}>
                   {(data?.topPatients || []).map((_entry: any, index: number) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />

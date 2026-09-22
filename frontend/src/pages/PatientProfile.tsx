@@ -24,6 +24,29 @@ export default function PatientProfile() {
   const [editLastName, setEditLastName] = useState('');
   const [warningMessage, setWarningMessage] = useState<string | null>(null);
 
+  // Asistente de cálculo de pañales (paquetes x unidades)
+  const [packageCount, setPackageCount] = useState<number | ''>('');
+  const [unitsPerPackage, setUnitsPerPackage] = useState<number | ''>('');
+
+  const selectedItemObj = items.find(i => i.id === selectedItem);
+  const isPanales = Boolean(
+    selectedItemObj?.name?.toUpperCase().includes('PAÑAL') || 
+    selectedItemObj?.name?.toUpperCase().includes('PANAL')
+  );
+
+  const handlePanalesCalc = (pkgs: number | '', units: number | '') => {
+    setPackageCount(pkgs);
+    setUnitsPerPackage(units);
+    const p = typeof pkgs === 'number' ? pkgs : 0;
+    const u = typeof units === 'number' ? units : 0;
+    if (p > 0 && u > 0) {
+      const total = p * u;
+      setQuantity(total);
+      // Autoriza hasta 120 (1 Cupo) por defecto
+      setQuantityAuthorized(Math.min(total, 120));
+    }
+  };
+
   useEffect(() => {
     fetchData();
   }, [id]);
@@ -126,6 +149,8 @@ export default function PatientProfile() {
       setSelectedItem('');
       setQuantity(1);
       setQuantityAuthorized(1);
+      setPackageCount('');
+      setUnitsPerPackage('');
       setPrescriptionDate(format(new Date(), 'yyyy-MM-dd'));
       fetchData(); // reload history
     } catch (err) {
@@ -206,13 +231,90 @@ export default function PatientProfile() {
                 <select 
                   className="input-glass" 
                   value={selectedItem} 
-                  onChange={(e) => setSelectedItem(e.target.value)}
+                  onChange={(e) => {
+                    setSelectedItem(e.target.value);
+                    setPackageCount('');
+                    setUnitsPerPackage('');
+                  }}
                   required
                 >
                   <option value="">Seleccionar...</option>
                   {items.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
                 </select>
               </div>
+
+              {/* Asistente de Cálculo para Pañales */}
+              {isPanales && (
+                <div style={{
+                  background: 'rgba(59, 130, 246, 0.08)',
+                  border: '1px solid rgba(59, 130, 246, 0.3)',
+                  borderRadius: '10px',
+                  padding: '0.85rem',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.6rem'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      📦 Asistente de Paquetes x Unidades
+                    </span>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                      Tope: 120 un. (1 Cupo)
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                    <div>
+                      <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '3px' }}>
+                        Cant. Paquetes:
+                      </label>
+                      <input 
+                        type="number" 
+                        min="1"
+                        className="input-glass" 
+                        value={packageCount} 
+                        onChange={(e) => handlePanalesCalc(e.target.value ? parseInt(e.target.value) : '', unitsPerPackage)}
+                        placeholder="Ej: 2"
+                        style={{ padding: '0.4rem 0.6rem', fontSize: '0.9rem' }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '3px' }}>
+                        Unidades x Paquete:
+                      </label>
+                      <input 
+                        type="number" 
+                        min="1"
+                        className="input-glass" 
+                        value={unitsPerPackage} 
+                        onChange={(e) => handlePanalesCalc(packageCount, e.target.value ? parseInt(e.target.value) : '')}
+                        placeholder="Ej: 50"
+                        style={{ padding: '0.4rem 0.6rem', fontSize: '0.9rem' }}
+                      />
+                    </div>
+                  </div>
+
+                  {Number(packageCount) > 0 && Number(unitsPerPackage) > 0 && (
+                    <div style={{ background: 'rgba(0,0,0,0.25)', padding: '0.6rem', borderRadius: '6px', fontSize: '0.8rem', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '4px' }}>
+                        <span>Total prescripto: <strong>{Number(packageCount) * Number(unitsPerPackage)} pañales</strong></span>
+                        <span>Equivale a: <strong style={{ color: 'var(--primary)' }}>{((Number(packageCount) * Number(unitsPerPackage)) / 120).toFixed(2)} Cupo(s)</strong></span>
+                      </div>
+                      <div>
+                        {Number(packageCount) * Number(unitsPerPackage) <= 120 ? (
+                          <span style={{ color: '#10b981' }}>
+                            ✅ Dentro del cupo mensual. Restan <strong>{120 - (Number(packageCount) * Number(unitsPerPackage))} unidades</strong> ({((1 - (Number(packageCount) * Number(unitsPerPackage)) / 120) * 100).toFixed(0)}% disponible).
+                          </span>
+                        ) : (
+                          <span style={{ color: '#f59e0b' }}>
+                            ⚠️ Supera el cupo mensual (120 un.). Excedente: <strong>{(Number(packageCount) * Number(unitsPerPackage)) - 120} unidades</strong>. Se autorizan automáticamente 120 unidades.
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
               <div>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>Cantidad Indicada</label>
                 <input 
@@ -277,7 +379,14 @@ export default function PatientProfile() {
                       <tr key={h.id} className="history-row">
                         <td style={{ borderTop: '1px solid var(--card-border)', whiteSpace: 'nowrap' }}>{format(new Date(h.datePrescribed), 'dd/MM/yyyy')}</td>
                         <td style={{ borderTop: '1px solid var(--card-border)' }}>{h.item.name}</td>
-                        <td style={{ borderTop: '1px solid var(--card-border)', whiteSpace: 'nowrap' }}>{h.quantityAuthorized} / {h.quantityPrescribed}</td>
+                        <td style={{ borderTop: '1px solid var(--card-border)', whiteSpace: 'nowrap' }}>
+                          {h.quantityAuthorized} / {h.quantityPrescribed}
+                          {(h.item.name.toUpperCase().includes('PAÑAL') || h.item.name.toUpperCase().includes('PANAL')) && (
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                              {((h.quantityAuthorized) / 120).toFixed(2)} Cupo(s)
+                            </div>
+                          )}
+                        </td>
                         <td style={{ borderTop: '1px solid var(--card-border)' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                             <span className={`status-${h.status}`}>
