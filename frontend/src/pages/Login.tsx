@@ -32,9 +32,9 @@ export default function Login({ onLogin }: LoginProps) {
       onLogin();
     } catch (err: any) {
       if (err.response?.status === 401) {
-        setError('Usuario o contraseña incorrectos. Verifique sus datos.');
+        setError(err.response?.data?.error || 'Usuario o contraseña incorrectos. Verifique sus datos.');
       } else {
-        setError('Error al conectar con el servidor. Si el servidor estaba en reposo, aguarde unos segundos y vuelva a presionar Ingresar.');
+        setError(err.response?.data?.error || 'Error al conectar con el servidor. Por favor intente nuevamente.');
       }
     } finally {
       setLoading(false);
