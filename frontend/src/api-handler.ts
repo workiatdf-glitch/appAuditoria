@@ -625,57 +625,17 @@ export async function handleApiRequest(request: Request, env: Env): Promise<Resp
       const body = (await request.json().catch(() => ({}))) as any;
 
       if (body.initSchema) {
-        await env.DB.exec(`
-          CREATE TABLE IF NOT EXISTS User (
-            id TEXT PRIMARY KEY,
-            username TEXT UNIQUE NOT NULL,
-            password TEXT NOT NULL,
-            role TEXT DEFAULT 'USER' NOT NULL,
-            createdAt TEXT NOT NULL,
-            updatedAt TEXT NOT NULL
-          );
-          CREATE TABLE IF NOT EXISTS Item (
-            id TEXT PRIMARY KEY,
-            name TEXT UNIQUE NOT NULL,
-            createdAt TEXT NOT NULL,
-            updatedAt TEXT NOT NULL
-          );
-          CREATE TABLE IF NOT EXISTS Patient (
-            id TEXT PRIMARY KEY,
-            dni TEXT UNIQUE NOT NULL,
-            firstName TEXT NOT NULL,
-            lastName TEXT NOT NULL,
-            patientType TEXT NOT NULL,
-            createdAt TEXT NOT NULL,
-            updatedAt TEXT NOT NULL
-          );
-          CREATE TABLE IF NOT EXISTS DispensingRule (
-            id TEXT PRIMARY KEY,
-            itemId TEXT NOT NULL,
-            patientType TEXT NOT NULL,
-            maxQuantity INTEGER NOT NULL,
-            createdAt TEXT NOT NULL,
-            updatedAt TEXT NOT NULL,
-            UNIQUE(itemId, patientType)
-          );
-          CREATE TABLE IF NOT EXISTS Prescription (
-            id TEXT PRIMARY KEY,
-            patientId TEXT NOT NULL,
-            itemId TEXT NOT NULL,
-            datePrescribed TEXT NOT NULL,
-            quantityPrescribed INTEGER NOT NULL,
-            quantityAuthorized INTEGER NOT NULL,
-            status TEXT NOT NULL,
-            notes TEXT,
-            createdById TEXT NOT NULL,
-            createdAt TEXT NOT NULL,
-            updatedAt TEXT NOT NULL
-          );
-          CREATE INDEX IF NOT EXISTS idx_prescription_patient ON Prescription(patientId);
-          CREATE INDEX IF NOT EXISTS idx_prescription_item ON Prescription(itemId);
-          CREATE INDEX IF NOT EXISTS idx_prescription_date ON Prescription(datePrescribed);
-          CREATE INDEX IF NOT EXISTS idx_patient_dni ON Patient(dni);
-        `);
+        await env.DB.batch([
+          env.DB.prepare('CREATE TABLE IF NOT EXISTS User (id TEXT PRIMARY KEY, username TEXT UNIQUE NOT NULL, password TEXT NOT NULL, role TEXT DEFAULT "USER" NOT NULL, createdAt TEXT NOT NULL, updatedAt TEXT NOT NULL)'),
+          env.DB.prepare('CREATE TABLE IF NOT EXISTS Item (id TEXT PRIMARY KEY, name TEXT UNIQUE NOT NULL, createdAt TEXT NOT NULL, updatedAt TEXT NOT NULL)'),
+          env.DB.prepare('CREATE TABLE IF NOT EXISTS Patient (id TEXT PRIMARY KEY, dni TEXT UNIQUE NOT NULL, firstName TEXT NOT NULL, lastName TEXT NOT NULL, patientType TEXT NOT NULL, createdAt TEXT NOT NULL, updatedAt TEXT NOT NULL)'),
+          env.DB.prepare('CREATE TABLE IF NOT EXISTS DispensingRule (id TEXT PRIMARY KEY, itemId TEXT NOT NULL, patientType TEXT NOT NULL, maxQuantity INTEGER NOT NULL, createdAt TEXT NOT NULL, updatedAt TEXT NOT NULL, UNIQUE(itemId, patientType))'),
+          env.DB.prepare('CREATE TABLE IF NOT EXISTS Prescription (id TEXT PRIMARY KEY, patientId TEXT NOT NULL, itemId TEXT NOT NULL, datePrescribed TEXT NOT NULL, quantityPrescribed INTEGER NOT NULL, quantityAuthorized INTEGER NOT NULL, status TEXT NOT NULL, notes TEXT, createdById TEXT NOT NULL, createdAt TEXT NOT NULL, updatedAt TEXT NOT NULL)'),
+          env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_prescription_patient ON Prescription(patientId)'),
+          env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_prescription_item ON Prescription(itemId)'),
+          env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_prescription_date ON Prescription(datePrescribed)'),
+          env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_patient_dni ON Patient(dni)'),
+        ]);
       }
 
       if (body.users && body.users.length > 0) {
