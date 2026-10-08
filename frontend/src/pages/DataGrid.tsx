@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, ArrowLeft } from 'lucide-react';
+import { LogOut, ArrowLeft, Search } from 'lucide-react';
 import api from '../api'; // Use our api instance which sets the token
 
 interface GridItem {
@@ -28,9 +28,12 @@ export default function DataGrid() {
   const [grid, setGrid] = useState<GridRow[]>([]);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
   const fetchGrid = async () => {
+    setLoading(true);
     try {
       const query = new URLSearchParams();
       if (startDate) query.append('startDate', startDate);
@@ -41,12 +44,23 @@ export default function DataGrid() {
       setGrid(res.data.grid || []);
     } catch (err) {
       console.error(err);
+    } finally {
+      setLoading(false);
     }
   };
 
   useEffect(() => {
     fetchGrid();
   }, [startDate, endDate]);
+
+  const filteredGrid = grid.filter((row) => {
+    if (!searchTerm.trim()) return true;
+    const term = searchTerm.toLowerCase().trim();
+    return (
+      row.name.toLowerCase().includes(term) ||
+      row.dni.toLowerCase().includes(term)
+    );
+  });
 
   const getStatusColor = (status: string) => {
     switch(status) {
@@ -105,6 +119,19 @@ export default function DataGrid() {
           <p style={{ color: 'var(--text-muted)' }}>Vista integral de base de datos estilo Excel</p>
         </div>
         <div className="datagrid-header-controls" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          <div className="datagrid-search-row" style={{ display: 'flex', alignItems: 'center' }}>
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+              <Search size={16} style={{ position: 'absolute', left: '10px', color: 'var(--text-muted)', pointerEvents: 'none' }} />
+              <input 
+                type="text" 
+                placeholder="Buscar paciente o DNI..." 
+                value={searchTerm} 
+                onChange={e => setSearchTerm(e.target.value)}
+                className="input-glass"
+                style={{ padding: '8px 10px 8px 32px', fontSize: '0.85rem', width: '190px' }}
+              />
+            </div>
+          </div>
           <div className="datagrid-date-row" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
             <input 
               type="date" 
@@ -125,7 +152,7 @@ export default function DataGrid() {
           </div>
           <div className="datagrid-btn-row" style={{ display: 'flex', gap: '0.5rem' }}>
             <button 
-              onClick={() => { setStartDate(''); setEndDate(''); }}
+              onClick={() => { setStartDate(''); setEndDate(''); setSearchTerm(''); }}
               className="btn-primary"
               style={{ background: 'var(--primary)', padding: '8px 12px', fontSize: '0.85rem' }}
             >
@@ -143,7 +170,7 @@ export default function DataGrid() {
       </header>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-        <span>Total filas: {grid.length}</span>
+        <span>Total filas: {filteredGrid.length}{searchTerm ? ` (filtrado de ${grid.length})` : ''}</span>
         <span>👉 Desliza para explorar insumos</span>
       </div>
 
@@ -162,34 +189,41 @@ export default function DataGrid() {
               </tr>
             </thead>
             <tbody>
-              {grid.map(row => (
-                <tr key={row.id} className="history-row">
-                  <td 
-                    className="datagrid-col-patient"
-                    style={{ padding: '0.75rem', position: 'sticky', left: 0, background: '#131322', zIndex: 10, cursor: 'pointer', borderTop: '1px solid var(--card-border)' }}
-                    onClick={() => navigate(`/patient/${row.id}`)}
-                  >
-                    <span style={{ color: '#93c5fd', fontWeight: 500 }}>{row.name}</span>
-                  </td>
-                  <td 
-                    className="datagrid-col-dni"
-                    style={{ padding: '0.75rem', position: 'sticky', left: '220px', background: '#131322', zIndex: 10, borderTop: '1px solid var(--card-border)' }}
-                  >
-                    {row.dni}
-                  </td>
-                  {items.map(item => (
-                    <td key={item.id} style={{ padding: '0.5rem', textAlign: 'center', borderTop: '1px solid var(--card-border)' }}>
-                      {renderCellContent(row.items[item.id])}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-              {grid.length === 0 && (
+              {loading ? (
                 <tr>
-                  <td colSpan={items.length + 2} style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-                    No hay datos para mostrar en este período.
+                  <td colSpan={items.length > 0 ? items.length + 2 : 5} style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                    Cargando planilla virtual de pacientes...
                   </td>
                 </tr>
+              ) : filteredGrid.length === 0 ? (
+                <tr>
+                  <td colSpan={items.length > 0 ? items.length + 2 : 5} style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                    {searchTerm ? 'No se encontraron pacientes para esa búsqueda.' : 'No hay datos para mostrar en este período.'}
+                  </td>
+                </tr>
+              ) : (
+                filteredGrid.map(row => (
+                  <tr key={row.id} className="history-row">
+                    <td 
+                      className="datagrid-col-patient"
+                      style={{ padding: '0.75rem', position: 'sticky', left: 0, background: '#131322', zIndex: 10, cursor: 'pointer', borderTop: '1px solid var(--card-border)' }}
+                      onClick={() => navigate(`/patient/${row.id}`)}
+                    >
+                      <span style={{ color: '#93c5fd', fontWeight: 500 }}>{row.name}</span>
+                    </td>
+                    <td 
+                      className="datagrid-col-dni"
+                      style={{ padding: '0.75rem', position: 'sticky', left: '220px', background: '#131322', zIndex: 10, borderTop: '1px solid var(--card-border)' }}
+                    >
+                      {row.dni}
+                    </td>
+                    {items.map(item => (
+                      <td key={item.id} style={{ padding: '0.5rem', textAlign: 'center', borderTop: '1px solid var(--card-border)' }}>
+                        {renderCellContent(row.items[item.id])}
+                      </td>
+                    ))}
+                  </tr>
+                ))
               )}
             </tbody>
           </table>

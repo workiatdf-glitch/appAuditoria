@@ -436,6 +436,81 @@ export async function handleApiRequest(request: Request, env: Env): Promise<Resp
       }
     }
 
+    // 6.5 DataGrid (Planilla Virtual)
+    if (path === '/api/datagrid' && method === 'GET') {
+      const authUser = await getAuthUser(request, secret);
+      if (!authUser) return errorJson('No autorizado', 401);
+
+      const startDate = url.searchParams.get('startDate');
+      const endDate = url.searchParams.get('endDate');
+
+      // 1. Obtener todos los ítems ordenados por nombre
+      const { results: itemsResults } = await env.DB.prepare(
+        'SELECT id, name FROM Item ORDER BY name ASC'
+      ).all();
+      const items = itemsResults || [];
+
+      // 2. Obtener todos los pacientes ordenados alfabéticamente
+      const { results: patientResults } = await env.DB.prepare(
+        'SELECT id, dni, firstName, lastName, patientType FROM Patient ORDER BY lastName COLLATE NOCASE ASC, firstName COLLATE NOCASE ASC'
+      ).all();
+      const patients = patientResults || [];
+
+      // 3. Obtener prescripciones con filtro opcional de fechas
+      let rxQuery = 'SELECT id, patientId, itemId, datePrescribed, quantityAuthorized, status FROM Prescription WHERE 1=1';
+      const rxParams: any[] = [];
+
+      if (startDate) {
+        rxQuery += ' AND datePrescribed >= ?';
+        rxParams.push(startDate);
+      }
+      if (endDate) {
+        rxQuery += ' AND datePrescribed <= ?';
+        rxParams.push(endDate.includes('T') ? endDate : `${endDate}T23:59:59.999Z`);
+      }
+
+      rxQuery += ' ORDER BY datePrescribed ASC';
+
+      const { results: rxResults } = await env.DB.prepare(rxQuery).bind(...rxParams).all();
+      const prescriptions = rxResults || [];
+
+      // Mapear prescripciones: patientId -> itemId -> array de prescripciones
+      const rxByPatient: Record<string, Record<string, any[]>> = {};
+      for (const rx of prescriptions) {
+        if (!rxByPatient[rx.patientId]) {
+          rxByPatient[rx.patientId] = {};
+        }
+        if (!rxByPatient[rx.patientId][rx.itemId]) {
+          rxByPatient[rx.patientId][rx.itemId] = [];
+        }
+        rxByPatient[rx.patientId][rx.itemId].push({
+          id: rx.id,
+          datePrescribed: rx.datePrescribed,
+          quantityAuthorized: rx.quantityAuthorized,
+          status: rx.status,
+        });
+      }
+
+      // Construir la grilla completa estilo Excel
+      let grid = patients.map((p: any) => {
+        const rowItems = rxByPatient[p.id] || {};
+        return {
+          id: p.id,
+          dni: p.dni,
+          name: `${p.lastName || ''} ${p.firstName || ''}`.trim(),
+          patientType: p.patientType,
+          items: rowItems,
+        };
+      });
+
+      // Si se especificó un rango de fechas, filtrar pacientes que tengan al menos una prescripción en dicho rango
+      if (startDate || endDate) {
+        grid = grid.filter((row: any) => Object.keys(row.items).length > 0);
+      }
+
+      return json({ items, grid });
+    }
+
     // 7. Analytics (Opción A Desglosada con Cupos de Pañales)
     if (path === '/api/analytics' && method === 'GET') {
       const authUser = await getAuthUser(request, secret);
