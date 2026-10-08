@@ -614,6 +614,117 @@ export async function handleApiRequest(request: Request, env: Env): Promise<Resp
       });
     }
 
+    // 9. Admin Database Setup & Batch Import
+    if (path === '/api/admin/import' && method === 'POST') {
+      const key = url.searchParams.get('key');
+      const authUser = await getAuthUser(request, secret);
+      if (!authUser && key !== 'supersecretkey_diabetes') {
+        return errorJson('Acceso no autorizado', 401);
+      }
+
+      const body = (await request.json().catch(() => ({}))) as any;
+
+      if (body.initSchema) {
+        await env.DB.exec(`
+          CREATE TABLE IF NOT EXISTS User (
+            id TEXT PRIMARY KEY,
+            username TEXT UNIQUE NOT NULL,
+            password TEXT NOT NULL,
+            role TEXT DEFAULT 'USER' NOT NULL,
+            createdAt TEXT NOT NULL,
+            updatedAt TEXT NOT NULL
+          );
+          CREATE TABLE IF NOT EXISTS Item (
+            id TEXT PRIMARY KEY,
+            name TEXT UNIQUE NOT NULL,
+            createdAt TEXT NOT NULL,
+            updatedAt TEXT NOT NULL
+          );
+          CREATE TABLE IF NOT EXISTS Patient (
+            id TEXT PRIMARY KEY,
+            dni TEXT UNIQUE NOT NULL,
+            firstName TEXT NOT NULL,
+            lastName TEXT NOT NULL,
+            patientType TEXT NOT NULL,
+            createdAt TEXT NOT NULL,
+            updatedAt TEXT NOT NULL
+          );
+          CREATE TABLE IF NOT EXISTS DispensingRule (
+            id TEXT PRIMARY KEY,
+            itemId TEXT NOT NULL,
+            patientType TEXT NOT NULL,
+            maxQuantity INTEGER NOT NULL,
+            createdAt TEXT NOT NULL,
+            updatedAt TEXT NOT NULL,
+            UNIQUE(itemId, patientType)
+          );
+          CREATE TABLE IF NOT EXISTS Prescription (
+            id TEXT PRIMARY KEY,
+            patientId TEXT NOT NULL,
+            itemId TEXT NOT NULL,
+            datePrescribed TEXT NOT NULL,
+            quantityPrescribed INTEGER NOT NULL,
+            quantityAuthorized INTEGER NOT NULL,
+            status TEXT NOT NULL,
+            notes TEXT,
+            createdById TEXT NOT NULL,
+            createdAt TEXT NOT NULL,
+            updatedAt TEXT NOT NULL
+          );
+          CREATE INDEX IF NOT EXISTS idx_prescription_patient ON Prescription(patientId);
+          CREATE INDEX IF NOT EXISTS idx_prescription_item ON Prescription(itemId);
+          CREATE INDEX IF NOT EXISTS idx_prescription_date ON Prescription(datePrescribed);
+          CREATE INDEX IF NOT EXISTS idx_patient_dni ON Patient(dni);
+        `);
+      }
+
+      if (body.users && body.users.length > 0) {
+        const statements = body.users.map((u: any) =>
+          env.DB.prepare('INSERT OR REPLACE INTO User (id, username, password, role, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?)')
+            .bind(u.id, u.username, u.password, u.role || 'USER', u.createdAt || new Date().toISOString(), u.updatedAt || new Date().toISOString())
+        );
+        await env.DB.batch(statements);
+      }
+
+      if (body.items && body.items.length > 0) {
+        const statements = body.items.map((it: any) =>
+          env.DB.prepare('INSERT OR REPLACE INTO Item (id, name, createdAt, updatedAt) VALUES (?, ?, ?, ?)')
+            .bind(it.id, it.name, it.createdAt || new Date().toISOString(), it.updatedAt || new Date().toISOString())
+        );
+        await env.DB.batch(statements);
+      }
+
+      if (body.patients && body.patients.length > 0) {
+        const statements = body.patients.map((p: any) =>
+          env.DB.prepare('INSERT OR REPLACE INTO Patient (id, dni, firstName, lastName, patientType, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?)')
+            .bind(p.id, p.dni, p.firstName, p.lastName, p.patientType || 'TIPO_2', p.createdAt || new Date().toISOString(), p.updatedAt || new Date().toISOString())
+        );
+        await env.DB.batch(statements);
+      }
+
+      if (body.prescriptions && body.prescriptions.length > 0) {
+        const statements = body.prescriptions.map((r: any) =>
+          env.DB.prepare('INSERT OR REPLACE INTO Prescription (id, patientId, itemId, datePrescribed, quantityPrescribed, quantityAuthorized, status, notes, createdById, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+            .bind(
+              r.id,
+              r.patientId,
+              r.itemId,
+              r.datePrescribed,
+              parseInt(r.quantityPrescribed) || 1,
+              parseInt(r.quantityAuthorized) || 0,
+              r.status,
+              r.notes || null,
+              r.createdById,
+              r.createdAt || new Date().toISOString(),
+              r.updatedAt || new Date().toISOString()
+            )
+        );
+        await env.DB.batch(statements);
+      }
+
+      return json({ success: true, message: 'Batch import processed' });
+    }
+
     return errorJson('Ruta no encontrada', 404);
   } catch (err: any) {
     return errorJson('Error interno en Cloudflare D1 API: ' + (err.message || String(err)), 500);
