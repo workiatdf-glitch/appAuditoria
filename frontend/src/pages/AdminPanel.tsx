@@ -24,7 +24,7 @@ export default function AdminPanel() {
       const res = await api.get(url, { responseType: 'blob' });
       
       const mimeType = format === 'excel'
-        ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        ? 'application/vnd.ms-excel'
         : 'application/sql';
       const blob = new Blob([res.data], { type: mimeType });
       
@@ -32,7 +32,7 @@ export default function AdminPanel() {
       const a = document.createElement('a');
       a.href = downloadUrl;
       const today = new Date().toISOString().split('T')[0];
-      a.download = format === 'excel' ? `backup_diabetes_${today}.xlsx` : `backup_diabetes_${today}.sql`;
+      a.download = format === 'excel' ? `backup_diabetes_${today}.xls` : `backup_diabetes_${today}.sql`;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -130,7 +130,7 @@ export default function AdminPanel() {
             disabled={downloading}
             style={{ background: '#10b981', padding: '10px 16px', fontSize: '0.9rem' }}
           >
-            <FileSpreadsheet size={18} /> {downloading ? 'Generando...' : 'Descargar en Excel (.xlsx)'}
+            <FileSpreadsheet size={18} /> {downloading ? 'Generando...' : 'Descargar en Excel (.xls)'}
           </button>
           <button 
             onClick={() => handleDownloadBackup('sql')} 
@@ -138,7 +138,7 @@ export default function AdminPanel() {
             disabled={downloading}
             style={{ padding: '10px 16px', fontSize: '0.9rem' }}
           >
-            <Database size={18} /> {downloading ? 'Generando...' : 'Descargar en PostgreSQL (.sql)'}
+            <Database size={18} /> {downloading ? 'Generando...' : 'Descargar en SQLite / D1 (.sql)'}
           </button>
         </div>
       </div>

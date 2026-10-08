@@ -646,7 +646,7 @@ export async function handleApiRequest(request: Request, env: Env): Promise<Resp
       });
     }
 
-    // 8. Admin Database Backup (.sql)
+    // 8. Admin Database Backup (.sql / .xls)
     if (path === '/api/admin/backup') {
       const key = url.searchParams.get('key');
       const authUser = await getAuthUser(request, secret);
@@ -654,12 +654,156 @@ export async function handleApiRequest(request: Request, env: Env): Promise<Resp
         return errorJson('Acceso no autorizado', 401);
       }
 
+      const format = url.searchParams.get('format') || 'sql';
+      const today = new Date().toISOString().split('T')[0];
+
+      if (format === 'excel') {
+        const { results: rxResults } = await env.DB.prepare(`
+          SELECT 
+            p.id,
+            p.datePrescribed,
+            pt.dni,
+            pt.lastName || ' ' || pt.firstName as patientName,
+            pt.patientType,
+            i.name as itemName,
+            p.quantityPrescribed,
+            p.quantityAuthorized,
+            p.status,
+            u.username as auditorName,
+            p.notes
+          FROM Prescription p
+          LEFT JOIN Patient pt ON p.patientId = pt.id
+          LEFT JOIN Item i ON p.itemId = i.id
+          LEFT JOIN User u ON p.createdById = u.id
+          ORDER BY p.datePrescribed DESC
+        `).all();
+        const prescriptions = rxResults || [];
+
+        const { results: patResults } = await env.DB.prepare(`
+          SELECT id, dni, lastName, firstName, patientType, createdAt
+          FROM Patient
+          ORDER BY lastName COLLATE NOCASE ASC, firstName COLLATE NOCASE ASC
+        `).all();
+        const patients = patResults || [];
+
+        const { results: itemResults } = await env.DB.prepare(`
+          SELECT id, name FROM Item ORDER BY name ASC
+        `).all();
+        const items = itemResults || [];
+
+        const escXml = (val: any) => {
+          if (val === null || val === undefined) return '';
+          return String(val)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&apos;');
+        };
+
+        let xml = `<?xml version="1.0" encoding="UTF-8"?>\n`;
+        xml += `<?mso-application progid="Excel.Sheet"?>\n`;
+        xml += `<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"\n`;
+        xml += ` xmlns:o="urn:schemas-microsoft-com:office:office"\n`;
+        xml += ` xmlns:x="urn:schemas-microsoft-com:office:excel"\n`;
+        xml += ` xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"\n`;
+        xml += ` xmlns:html="http://www.w3.org/TR/REC-html40">\n`;
+        xml += ` <Styles>\n`;
+        xml += `  <Style ss:ID="Header">\n`;
+        xml += `   <Font ss:Bold="1" ss:Color="#FFFFFF"/>\n`;
+        xml += `   <Interior ss:Color="#1E293B" ss:Pattern="Solid"/>\n`;
+        xml += `   <Alignment ss:Horizontal="Center" ss:Vertical="Center"/>\n`;
+        xml += `  </Style>\n`;
+        xml += ` </Styles>\n`;
+
+        // Hoja 1: Recetas
+        xml += ` <Worksheet ss:Name="Recetas">\n  <Table>\n`;
+        xml += `   <Row ss:StyleID="Header">\n`;
+        xml += `    <Cell><Data ss:Type="String">ID</Data></Cell>\n`;
+        xml += `    <Cell><Data ss:Type="String">Fecha</Data></Cell>\n`;
+        xml += `    <Cell><Data ss:Type="String">DNI</Data></Cell>\n`;
+        xml += `    <Cell><Data ss:Type="String">Paciente</Data></Cell>\n`;
+        xml += `    <Cell><Data ss:Type="String">Tipo Paciente</Data></Cell>\n`;
+        xml += `    <Cell><Data ss:Type="String">Insumo</Data></Cell>\n`;
+        xml += `    <Cell><Data ss:Type="String">Cant. Prescripta</Data></Cell>\n`;
+        xml += `    <Cell><Data ss:Type="String">Cant. Autorizada</Data></Cell>\n`;
+        xml += `    <Cell><Data ss:Type="String">Estado</Data></Cell>\n`;
+        xml += `    <Cell><Data ss:Type="String">Auditor</Data></Cell>\n`;
+        xml += `    <Cell><Data ss:Type="String">Notas</Data></Cell>\n`;
+        xml += `   </Row>\n`;
+        for (const r of prescriptions) {
+          const dateStr = r.datePrescribed ? String(r.datePrescribed).split('T')[0] : '';
+          xml += `   <Row>\n`;
+          xml += `    <Cell><Data ss:Type="String">${escXml(r.id)}</Data></Cell>\n`;
+          xml += `    <Cell><Data ss:Type="String">${escXml(dateStr)}</Data></Cell>\n`;
+          xml += `    <Cell><Data ss:Type="String">${escXml(r.dni)}</Data></Cell>\n`;
+          xml += `    <Cell><Data ss:Type="String">${escXml(r.patientName)}</Data></Cell>\n`;
+          xml += `    <Cell><Data ss:Type="String">${escXml(r.patientType)}</Data></Cell>\n`;
+          xml += `    <Cell><Data ss:Type="String">${escXml(r.itemName)}</Data></Cell>\n`;
+          xml += `    <Cell><Data ss:Type="Number">${Number(r.quantityPrescribed) || 0}</Data></Cell>\n`;
+          xml += `    <Cell><Data ss:Type="Number">${Number(r.quantityAuthorized) || 0}</Data></Cell>\n`;
+          xml += `    <Cell><Data ss:Type="String">${escXml(r.status)}</Data></Cell>\n`;
+          xml += `    <Cell><Data ss:Type="String">${escXml(r.auditorName || 'Sistema')}</Data></Cell>\n`;
+          xml += `    <Cell><Data ss:Type="String">${escXml(r.notes || '')}</Data></Cell>\n`;
+          xml += `   </Row>\n`;
+        }
+        xml += `  </Table>\n </Worksheet>\n`;
+
+        // Hoja 2: Pacientes
+        xml += ` <Worksheet ss:Name="Pacientes">\n  <Table>\n`;
+        xml += `   <Row ss:StyleID="Header">\n`;
+        xml += `    <Cell><Data ss:Type="String">ID</Data></Cell>\n`;
+        xml += `    <Cell><Data ss:Type="String">DNI</Data></Cell>\n`;
+        xml += `    <Cell><Data ss:Type="String">Apellido</Data></Cell>\n`;
+        xml += `    <Cell><Data ss:Type="String">Nombre</Data></Cell>\n`;
+        xml += `    <Cell><Data ss:Type="String">Tipo Paciente</Data></Cell>\n`;
+        xml += `    <Cell><Data ss:Type="String">Fecha Alta</Data></Cell>\n`;
+        xml += `   </Row>\n`;
+        for (const p of patients) {
+          const dateStr = p.createdAt ? String(p.createdAt).split('T')[0] : '';
+          xml += `   <Row>\n`;
+          xml += `    <Cell><Data ss:Type="String">${escXml(p.id)}</Data></Cell>\n`;
+          xml += `    <Cell><Data ss:Type="String">${escXml(p.dni)}</Data></Cell>\n`;
+          xml += `    <Cell><Data ss:Type="String">${escXml(p.lastName)}</Data></Cell>\n`;
+          xml += `    <Cell><Data ss:Type="String">${escXml(p.firstName)}</Data></Cell>\n`;
+          xml += `    <Cell><Data ss:Type="String">${escXml(p.patientType)}</Data></Cell>\n`;
+          xml += `    <Cell><Data ss:Type="String">${escXml(dateStr)}</Data></Cell>\n`;
+          xml += `   </Row>\n`;
+        }
+        xml += `  </Table>\n </Worksheet>\n`;
+
+        // Hoja 3: Insumos
+        xml += ` <Worksheet ss:Name="Insumos">\n  <Table>\n`;
+        xml += `   <Row ss:StyleID="Header">\n`;
+        xml += `    <Cell><Data ss:Type="String">ID</Data></Cell>\n`;
+        xml += `    <Cell><Data ss:Type="String">Insumo</Data></Cell>\n`;
+        xml += `   </Row>\n`;
+        for (const it of items) {
+          xml += `   <Row>\n`;
+          xml += `    <Cell><Data ss:Type="String">${escXml(it.id)}</Data></Cell>\n`;
+          xml += `    <Cell><Data ss:Type="String">${escXml(it.name)}</Data></Cell>\n`;
+          xml += `   </Row>\n`;
+        }
+        xml += `  </Table>\n </Worksheet>\n`;
+        xml += `</Workbook>`;
+
+        const filename = `backup_diabetes_${today}.xls`;
+        return new Response(xml, {
+          headers: {
+            'Content-Type': 'application/vnd.ms-excel; charset=utf-8',
+            'Content-Disposition': `attachment; filename="${filename}"`,
+            ...CORS_HEADERS,
+          },
+        });
+      }
+
+      // Default: SQL format (Cloudflare D1 SQLite)
       const users = (await env.DB.prepare('SELECT * FROM User').all()).results || [];
       const items = (await env.DB.prepare('SELECT * FROM Item').all()).results || [];
       const patients = (await env.DB.prepare('SELECT * FROM Patient').all()).results || [];
       const rx = (await env.DB.prepare('SELECT * FROM Prescription').all()).results || [];
 
-      let sqlDump = `-- Backup Base de Datos Control Diabetes (Cloudflare D1)\n-- Fecha: ${new Date().toISOString()}\n\n`;
+      let sqlDump = `-- Backup Base de Datos Control Diabetes (Cloudflare D1 SQLite)\n-- Fecha: ${new Date().toISOString()}\n\n`;
       sqlDump += `BEGIN TRANSACTION;\n\n`;
 
       const esc = (v: any) => (v === null || v === undefined ? 'NULL' : `'${String(v).replace(/'/g, "''")}'`);
@@ -679,7 +823,7 @@ export async function handleApiRequest(request: Request, env: Env): Promise<Resp
 
       sqlDump += `\nCOMMIT;\n`;
 
-      const filename = `backup_diabetes_${new Date().toISOString().split('T')[0]}.sql`;
+      const filename = `backup_diabetes_${today}.sql`;
       return new Response(sqlDump, {
         headers: {
           'Content-Type': 'application/sql',
