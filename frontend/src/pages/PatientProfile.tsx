@@ -116,16 +116,20 @@ export default function PatientProfile() {
 
   const handleUpdateType = async () => {
     try {
+      const cleanDni = editDni.trim();
+      const cleanFirstName = editFirstName.trim().toUpperCase();
+      const cleanLastName = editLastName.trim().toUpperCase();
       await api.put(`/patients/${id}`, { 
         patientType: editType,
-        dni: editDni,
-        firstName: editFirstName,
-        lastName: editLastName
+        dni: cleanDni,
+        firstName: cleanFirstName,
+        lastName: cleanLastName
       });
-      setPatient({ ...patient, patientType: editType, dni: editDni, firstName: editFirstName, lastName: editLastName });
+      setPatient({ ...patient, patientType: editType, dni: cleanDni, firstName: cleanFirstName, lastName: cleanLastName });
       setIsEditingType(false);
-    } catch (err) {
-      alert("Error al actualizar paciente");
+    } catch (err: any) {
+      const msg = err.response?.data?.error || "Error al actualizar paciente";
+      alert(msg);
     }
   };
 

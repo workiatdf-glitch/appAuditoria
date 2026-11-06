@@ -225,7 +225,8 @@ export async function handleApiRequest(request: Request, env: Env): Promise<Resp
       if (method === 'GET') {
         const dni = url.searchParams.get('dni');
         if (dni) {
-          const patient = await env.DB.prepare('SELECT * FROM Patient WHERE dni = ?').bind(dni).first();
+          const cleanDni = dni.trim();
+          const patient = await env.DB.prepare('SELECT * FROM Patient WHERE TRIM(dni) = ?').bind(cleanDni).first();
           return json(patient ? [patient] : []);
         }
         const { results } = await env.DB.prepare('SELECT * FROM Patient ORDER BY lastName ASC, firstName ASC').all();
@@ -235,12 +236,23 @@ export async function handleApiRequest(request: Request, env: Env): Promise<Resp
       if (method === 'POST') {
         const { dni, firstName, lastName, patientType } = (await request.json().catch(() => ({}))) as any;
         if (!dni || !firstName || !lastName) return errorJson('Datos requeridos faltantes', 400);
+        const cleanDni = String(dni).trim();
+        const cleanFirstName = String(firstName).trim().toUpperCase();
+        const cleanLastName = String(lastName).trim().toUpperCase();
+        if (!cleanDni || !cleanFirstName || !cleanLastName) return errorJson('Datos requeridos inválidos', 400);
+
+        // Check if DNI already exists (prevent duplicates even before SQLite constraint)
+        const existing = await env.DB.prepare('SELECT id FROM Patient WHERE TRIM(dni) = ?').bind(cleanDni).first();
+        if (existing) {
+          return errorJson('Ya existe un paciente registrado con el DNI ' + cleanDni, 400);
+        }
+
         const id = crypto.randomUUID();
         const now = new Date().toISOString();
         await env.DB.prepare('INSERT INTO Patient (id, dni, firstName, lastName, patientType, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?)')
-          .bind(id, dni, firstName, lastName, patientType || 'TIPO_2', now, now)
+          .bind(id, cleanDni, cleanFirstName, cleanLastName, patientType || 'TIPO_2', now, now)
           .run();
-        return json({ id, dni, firstName, lastName, patientType: patientType || 'TIPO_2' });
+        return json({ id, dni: cleanDni, firstName: cleanFirstName, lastName: cleanLastName, patientType: patientType || 'TIPO_2' });
       }
     }
 
@@ -258,9 +270,12 @@ export async function handleApiRequest(request: Request, env: Env): Promise<Resp
 
       if (method === 'PUT') {
         const { dni, firstName, lastName, patientType } = (await request.json().catch(() => ({}))) as any;
+        const cleanDni = String(dni || '').trim();
+        const cleanFirstName = String(firstName || '').trim().toUpperCase();
+        const cleanLastName = String(lastName || '').trim().toUpperCase();
         const now = new Date().toISOString();
         await env.DB.prepare('UPDATE Patient SET dni = ?, firstName = ?, lastName = ?, patientType = ?, updatedAt = ? WHERE id = ?')
-          .bind(dni, firstName, lastName, patientType, now, patientId)
+          .bind(cleanDni, cleanFirstName, cleanLastName, patientType, now, patientId)
           .run();
         return json({ success: true });
       }

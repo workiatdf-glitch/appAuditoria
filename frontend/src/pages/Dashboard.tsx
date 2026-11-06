@@ -41,20 +41,21 @@ export default function Dashboard() {
   }, [searchQuery, allPatients]);
 
   const handleCreatePatient = async () => {
-    const isNumeric = /^\\d+$/.test(searchQuery.trim());
+    const isNumeric = /^\d+$/.test(searchQuery.trim());
     let newDni = searchQuery.trim();
     if (!isNumeric) {
-      newDni = prompt("DNI del paciente:") || '';
+      newDni = (prompt("DNI del paciente:") || '').trim();
       if (!newDni) return;
     }
-    const firstName = prompt("Nombre:");
-    const lastName = prompt("Apellido:");
+    const firstName = (prompt("Nombre:") || '').trim().toUpperCase();
+    const lastName = (prompt("Apellido:") || '').trim().toUpperCase();
     if (!firstName || !lastName) return;
     try {
       const res = await api.post('/patients', { dni: newDni, firstName, lastName });
       navigate(`/patient/${res.data.id}`);
-    } catch (err) {
-      alert("Error al crear paciente");
+    } catch (err: any) {
+      const msg = err.response?.data?.error || "Error al crear paciente";
+      alert(msg);
     }
   };
 
